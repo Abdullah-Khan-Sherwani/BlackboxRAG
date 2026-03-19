@@ -1,0 +1,198 @@
+================================================================================
+AVIATION SAFETY RAG - QUICK START CHECKLIST
+================================================================================
+
+PROJECT:  NTSB Aviation Accident Report RAG System
+STACK:    Pinecone + BM25 + RRF + Reranker + HF Inference API + Streamlit
+EVAL:     deepeval (Faithfulness + Relevancy) + Ablation Study
+DEADLINE: April 5, 2026
+CORPUS:   75-100 reports sampled from 7,462 NTSB reports (2016-2023)
+
+QUERY CAPABILITIES (single pipeline, different prompts):
+  - Single-accident Q/A: "What caused ERA24LA084?" or identify by description
+    (user does NOT need the NtsbNo — semantic search matches by details)
+  - Cross-document synthesis: "Compare engine failures in Cessna vs Piper"
+  - Follow-up reasoning: "Were there similar accidents?" triggers multi-report retrieval
+  - The retriever is the SAME for all queries. Only the LLM prompt template differs.
+  - Stretch goal: safety recommendation tracking (deferred unless time permits)
+
+================================================================================
+DAY 1: DATA PREP + CHUNKING + PINECONE UPSERT
+================================================================================
+
+Data Loading:
+  [ ] Load CSV (sep=';', encoding='utf-8')
+  [ ] Drop 15 duplicate rep_text rows
+  [ ] Sample 75-100 reports (stratified by year for diversity)
+  [ ] Clean text: remove "Page X of Y", normalize whitespace
+
+Chunking Strategy A - Recursive (for ablation):
+  [ ] Use RecursiveCharacterTextSplitter (chunk_size=1500, overlap=200)
+  [ ] Generate chunks from sampled reports
+  [ ] Attach metadata: chunk_id, ntsb_no, date, state, make, model
+
+Chunking Strategy B - Section-Aware (for ablation):
+  [ ] Split on NTSB section headers (History of Flight, Findings, etc.)
+  [ ] Sub-split oversized sections at sentence boundaries
+  [ ] Same metadata attachment
+
+Embedding + Pinecone:
+  [ ] Embed all chunks with all-MiniLM-L6-v2 (384 dimensions)
+  [ ] Create Pinecone index: name="ntsb-rag", dim=384, metric="cosine"
+  [ ] Upsert vectors + metadata in batches of 100
+  [ ] Verify with a test query
+
+Checkpoint: Chunks in Pinecone, BM25 corpus saved as pickle
+Expected: 500-2000 chunks from 75-100 reports
+
+================================================================================
+DAY 2: HYBRID RETRIEVAL + RRF
+================================================================================
+
+BM25 Setup:
+  [ ] Build BM25Okapi index from chunk texts (rank_bm25 library)
+  [ ] Save as bm25_index.pkl (for deployment to HF Space)
+
+Dense Retrieval:
+  [ ] Query Pinecone with embedded query (all-MiniLM-L6-v2)
+  [ ] Return top-K results with metadata
+
+Reciprocal Rank Fusion:
+  [ ] Implement RRF: score(d) = sum(1/(k+rank)) across both lists
+  [ ] Merge BM25 and Pinecone results into single ranked list
+  [ ] Test: compare hybrid results vs dense-only vs BM25-only
+
+Checkpoint: hybrid_retrieve(query) returns fused ranked chunk IDs
+
+================================================================================
+DAY 3: RERANKING + LLM GENERATION
+================================================================================
+
+Reranker:
+  [ ] Load cross-encoder/ms-marco-MiniLM-L-6-v2 (or NVIDIA NIM API)
+  [ ] Rerank top-10 fused results down to top-5
+  [ ] Test: verify reranked order improves relevance
+
+LLM Generation (HF Inference API):
+  [ ] Set up InferenceClient with Mistral-7B (or Llama-3-8B)
+  [ ] Write system prompt: aviation safety analyst, cite NtsbNo, stay grounded
+  [ ] Write synthesis prompt: for cross-document causal chain queries
+  [ ] Test end-to-end: query -> retrieve -> rerank -> generate -> cited answer
+
+Checkpoint: Full pipeline working end-to-end
+
+================================================================================
+DAY 4: EVALUATION + ABLATION STUDY
+================================================================================
+
+Test Set:
+  [ ] Write 15-20 test queries covering:
+      - Single-accident factual questions (5-7)
+      - Cross-document causal chain questions (5-7)
+      - Edge cases / out-of-scope questions (3-5)
+
+deepeval Setup:
+  [ ] pip install deepeval
+  [ ] Configure judge LLM (OpenAI, Ollama, or HF wrapper)
+
+Faithfulness Evaluation:
+  [ ] Run FaithfulnessMetric on all test cases
+  [ ] Extract claims + verification verdicts for 3+ examples (for report)
+  [ ] Record faithfulness score per query
+
+Relevancy Evaluation:
+  [ ] Run AnswerRelevancyMetric on all test cases
+  [ ] Record relevancy score per query
+  [ ] (Manual option: generate 3 Qs from answer, cosine sim with original)
+
+Ablation Runs:
+  [ ] Config A: Recursive chunking + Semantic-only retrieval (no rerank)
+  [ ] Config B: Recursive chunking + Hybrid + Reranking
+  [ ] Config C: Section-aware chunking + Semantic-only (no rerank)
+  [ ] Config D: Section-aware chunking + Hybrid + Reranking
+  [ ] Record faithfulness + relevancy for each config
+  [ ] Build comparison table for report
+
+Checkpoint: Ablation table + evaluation scores + 3 detailed examples
+
+================================================================================
+DAY 5: STREAMLIT UI + HF SPACES DEPLOYMENT
+================================================================================
+
+UI Implementation (app.py):
+  [ ] Text input for user query
+  [ ] Display: Generated answer with citations
+  [ ] Display: Retrieved chunks (expandable)
+  [ ] Display: Faithfulness and Relevancy scores
+  [ ] (Optional) Query type selector: single-accident vs cross-document
+
+Deployment Files:
+  [ ] app.py - main Streamlit app
+  [ ] requirements.txt - all dependencies
+  [ ] bm25_index.pkl - pre-built BM25 index + chunk data
+  [ ] Any helper modules (retriever.py, generator.py, etc.)
+
+HF Space Setup:
+  [ ] Create Space with Streamlit SDK
+  [ ] Set secrets: PINECONE_API_KEY, HF_TOKEN
+  [ ] Upload all files
+  [ ] Verify publicly accessible URL works
+
+Checkpoint: Live, publicly accessible app on HF Spaces
+
+================================================================================
+DAY 6: REPORT WRITING
+================================================================================
+
+Report Must Include:
+  [ ] Problem statement and domain description
+  [ ] Corpus source documentation (Garcia et al., Zenodo, 2025)
+  [ ] Technical architecture diagram
+  [ ] Chunking strategy descriptions (both)
+  [ ] Hybrid retrieval explanation (BM25 + dense + RRF + reranker)
+  [ ] Evaluation protocol:
+      [ ] Faithfulness: claim extraction + verification (3 examples shown)
+      [ ] Relevancy: alternate query generation + cosine similarity
+  [ ] Ablation study table (4+ configs x 2 metrics)
+  [ ] Link to live HF Space
+  [ ] Limitations and future work
+
+Format: Word or PDF on LMS (NOT Google Drive links)
+
+================================================================================
+DAY 7: BUFFER
+================================================================================
+
+  [ ] Fix any deployment issues
+  [ ] Re-run failed evaluation queries
+  [ ] Proofread report
+  [ ] Submit on LMS before April 5, 11:55 PM
+
+================================================================================
+REQUIRED ACCOUNTS / API KEYS
+================================================================================
+
+  [ ] Pinecone: free starter account (pinecone.io)
+  [ ] Hugging Face: account + API token (huggingface.co)
+  [ ] (Optional) OpenAI key for deepeval judge, OR use Ollama locally
+
+================================================================================
+KEY DEPENDENCIES
+================================================================================
+
+  pip install pandas sentence-transformers pinecone-client rank-bm25
+  pip install huggingface-hub streamlit deepeval
+  pip install langchain  # for RecursiveCharacterTextSplitter
+  pip install scikit-learn  # for cosine_similarity in relevancy
+
+================================================================================
+NOTES
+================================================================================
+
+- Embedding model MUST be all-MiniLM-L6-v2 for on-app query encoding
+- Pre-compute embeddings locally, only query embedding runs on HF Space
+- Pinecone free tier: 1 index, 100K vectors, sufficient for this project
+- HF Inference API: free tier has rate limits, add retry logic
+- BM25 index stored as pickle, loaded at app startup
+- This checklist is a living document - update as decisions change
+================================================================================
