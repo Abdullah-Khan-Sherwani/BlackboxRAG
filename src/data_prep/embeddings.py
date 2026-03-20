@@ -56,6 +56,7 @@ def sanity_test(model):
     sim_related = 1 - cosine(query_emb[0], passage_emb[0])
     sim_unrelated = 1 - cosine(query_emb[0], unrelated_emb[0])
 
+
     print(f"  Related similarity:   {sim_related:.4f}")
     print(f"  Unrelated similarity: {sim_unrelated:.4f}")
     assert sim_related > sim_unrelated, (
