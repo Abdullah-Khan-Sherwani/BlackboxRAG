@@ -5,10 +5,11 @@ Outputs .npz files containing chunk_ids and embedding vectors.
 import json
 import os
 import numpy as np
+import torch
 from tqdm import tqdm
 
 MODEL_NAME = "jinaai/jina-embeddings-v5-text-nano"
-BATCH_SIZE = 64
+BATCH_SIZE = 4  # Reduced for better visibility on CPU
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -74,8 +75,10 @@ def generate_embeddings(model, chunk_path, output_path):
     texts = [c['text'] for c in chunks]
 
     all_embeddings = []
+    print(f"Starting embedding generation for {len(texts)} chunks...")
     for i in tqdm(range(0, len(texts), BATCH_SIZE), desc=os.path.basename(chunk_path)):
         batch = texts[i:i + BATCH_SIZE]
+        # Log every batch since semantic chunks are large
         emb = model.encode(texts=batch, task="retrieval", prompt_name="document")
         all_embeddings.append(emb)
 
@@ -91,11 +94,24 @@ def generate_embeddings(model, chunk_path, output_path):
 
 def main():
     model = load_model()
+    
+    # Speed up: Use GPU if available
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Running on device: {device}")
+    model.to(device)
+    
     sanity_test(model)
 
     for strategy, chunk_path in CHUNK_FILES.items():
+        output_path = OUTPUT_FILES[strategy]
+        
+        # Skip if file already exists
+        if os.path.exists(output_path):
+            print(f"Skipping {strategy} - {os.path.basename(output_path)} already exists.")
+            continue
+            
         print(f"\nGenerating embeddings for {strategy} chunks...")
-        generate_embeddings(model, chunk_path, OUTPUT_FILES[strategy])
+        generate_embeddings(model, chunk_path, output_path)
 
     print("\nDone! All embeddings saved.")
 
