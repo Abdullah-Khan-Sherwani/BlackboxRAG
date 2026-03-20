@@ -13,3 +13,5 @@ peft
 pinecone
 python-dotenv
 google-generativeai
+rank-bm25
+streamlit
