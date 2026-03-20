@@ -1,8 +1,11 @@
 """
 Query Pinecone index and retrieve relevant chunks.
 Supports filtering by chunking strategy.
+Text is stored locally (not in Pinecone) and looked up by chunk_id after retrieval.
 """
+import json
 import os
+
 from dotenv import load_dotenv
 from pinecone import Pinecone
 
@@ -16,6 +19,19 @@ SAMPLE_QUERIES = [
     "Cessna accidents in instrument meteorological conditions",
     "How does pilot experience affect landing accident outcomes?",
 ]
+
+# Cache for local chunk lookups: {strategy: {chunk_id: chunk_dict}}
+_chunks_cache = {}
+
+
+def load_chunks(strategy):
+    """Load and cache the local chunks JSON for a strategy."""
+    if strategy not in _chunks_cache:
+        path = os.path.join(BASE_DIR, "data", "processed", f"chunks_{strategy}.json")
+        with open(path, "r", encoding="utf-8") as f:
+            chunks = json.load(f)
+        _chunks_cache[strategy] = {c["chunk_id"]: c for c in chunks}
+    return _chunks_cache[strategy]
 
 
 def load_model():
@@ -39,7 +55,10 @@ def init_pinecone():
 
 
 def retrieve(query, strategy, top_k=5, model=None, index=None):
-    """Encode a query and retrieve top-k matching chunks from Pinecone."""
+    """Encode a query and retrieve top-k matching chunks from Pinecone.
+
+    Enriches each match's metadata with the full text from local JSON.
+    """
     query_embedding = model.encode(texts=[query], task="retrieval", prompt_name="query")
     results = index.query(
         vector=query_embedding[0].tolist(),
@@ -47,6 +66,13 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
         include_metadata=True,
         filter={"strategy": {"$eq": strategy}},
     )
+
+    # Attach full text from local storage
+    chunks_dict = load_chunks(strategy)
+    for match in results.matches:
+        local = chunks_dict.get(match.id, {})
+        match.metadata["text"] = local.get("text", "")
+
     return results.matches
 
 

@@ -79,7 +79,6 @@ def build_vectors(chunk_ids, embeddings, chunks_dict, strategy):
                 "model": chunk.get("model", ""),
                 "phase_of_flight": chunk.get("phase_of_flight", ""),
                 "weather": chunk.get("weather", ""),
-                "text": chunk.get("text", ""),
                 "strategy": strategy,
             },
         })
