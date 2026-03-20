@@ -15,7 +15,7 @@ from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
 )
 
-GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_MODEL = "gemini-2.5-flash"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
