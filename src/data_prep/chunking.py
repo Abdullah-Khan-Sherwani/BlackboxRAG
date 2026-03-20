@@ -1,0 +1,137 @@
+"""
+Clean full report text and chunk documents using two different strategies:
+A. Recursive Character Splitting (baseline)
+B. Semantic Chunking (advanced)
+
+Outputs two separate JSON datasets containing chunks with metadata.
+"""
+import pandas as pd
+import re
+import json
+import os
+from langchain_text_splitters import RecursiveCharacterTextSplitter, CharacterTextSplitter
+from langchain_experimental.text_splitter import SemanticChunker
+from langchain_huggingface import HuggingFaceEmbeddings
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SAMPLE_PATH = os.path.join(BASE_DIR, 'data', 'processed', 'sampled_reports.csv')
+OUT_FIXED_PATH = os.path.join(BASE_DIR, 'data', 'processed', 'chunks_fixed.json')
+OUT_REC_PATH = os.path.join(BASE_DIR, 'data', 'processed', 'chunks_recursive.json')
+OUT_SEM_PATH = os.path.join(BASE_DIR, 'data', 'processed', 'chunks_semantic.json')
+
+def clean_report(text):
+    if not isinstance(text, str):
+        return ""
+    text = re.sub(r'Page \d+\s*of\s*\d+', '', text, flags=re.IGNORECASE)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+def build_metadata(row, chunk_idx, strategy):
+    return {
+        'chunk_id': f"{row['NtsbNo']}_{strategy}_{chunk_idx:03d}",
+        'ntsb_no': str(row['NtsbNo']),
+        'event_date': str(row['EventDate']),
+        'state': str(row.get('State', '')),
+        'make': str(row.get('Make', '')),
+        'model': str(row.get('Model', '')),
+        'phase_of_flight': str(row.get('BroadPhaseofFlight', '')),
+        'weather': str(row.get('WeatherCondition', ''))
+    }
+
+def chunk_fixed(df):
+    """Strategy A: Baseline fixed-size character splitting (no intelligent separators)."""
+    splitter = CharacterTextSplitter(
+        chunk_size=1500,
+        chunk_overlap=200,
+        separator=""
+    )
+
+    chunks = []
+    for _, row in df.iterrows():
+        text = clean_report(row['rep_text'])
+        header = f"Accident {row['NtsbNo']} ({row.get('Make', '')} {row.get('Model', '')}, {row.get('EventDate', '')[:10]}): "
+
+        doc_chunks = splitter.split_text(text)
+        for i, chunk_text in enumerate(doc_chunks):
+            chunk_data = build_metadata(row, i, 'fixed')
+            chunk_data['text'] = header + chunk_text
+            chunks.append(chunk_data)
+    return chunks
+
+def chunk_recursive(df):
+    """Strategy A: Baseline recursive character splitting."""
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=1500,
+        chunk_overlap=200,
+        separators=["\n\n", "\n", ". ", " "]
+    )
+    
+    chunks = []
+    for _, row in df.iterrows():
+        text = clean_report(row['rep_text'])
+        header = f"Accident {row['NtsbNo']} ({row.get('Make', '')} {row.get('Model', '')}, {row.get('EventDate', '')[:10]}): "
+        
+        doc_chunks = splitter.split_text(text)
+        for i, chunk_text in enumerate(doc_chunks):
+            chunk_data = build_metadata(row, i, 'rec')
+            chunk_data['text'] = header + chunk_text
+            chunks.append(chunk_data)
+    return chunks
+
+def chunk_semantic(df):
+    """Strategy B: Semantic Chunking using embeddings."""
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    semantic_chunker = SemanticChunker(embeddings, breakpoint_threshold_type="percentile")
+    
+    chunks = []
+    for idx, row in df.iterrows():
+        text = clean_report(row['rep_text'])
+        header = f"Accident {row['NtsbNo']} ({row.get('Make', '')} {row.get('Model', '')}, {row.get('EventDate', '')[:10]}): "
+        
+        if len(text) < 100:
+            doc_chunks = [text]
+        else:
+            try:
+                doc_chunks = semantic_chunker.split_text(text)
+            except Exception as e:
+                print(f"Warning: Semantic split failed for {row['NtsbNo']}, falling back to recursive. Error: {e}")
+                splitter = RecursiveCharacterTextSplitter(chunk_size=1500, chunk_overlap=200)
+                doc_chunks = splitter.split_text(text)
+                
+        for i, chunk_text in enumerate(doc_chunks):
+            chunk_data = build_metadata(row, i, 'sem')
+            chunk_data['text'] = header + chunk_text
+            chunks.append(chunk_data)
+            
+        if (idx+1) % 10 == 0:
+            print(f"  Processed {idx+1}/{len(df)} reports semantically...")
+            
+    return chunks
+
+def main():
+    print(f"Loading data from {SAMPLE_PATH}")
+    df = pd.read_csv(SAMPLE_PATH, sep=';', encoding='utf-8')
+    print(f"Loaded {len(df)} reports.")
+    
+    print("\nRunning Strategy A: Fixed-Size Chunking...")
+    chunks_fixed = chunk_fixed(df)
+    with open(OUT_FIXED_PATH, 'w', encoding='utf-8') as f:
+        json.dump(chunks_fixed, f, indent=2)
+    print(f"  -> Generated {len(chunks_fixed)} fixed chunks")
+
+    print("\nRunning Strategy B: Recursive Character Chunking...")
+    chunks_rec = chunk_recursive(df)
+    with open(OUT_REC_PATH, 'w', encoding='utf-8') as f:
+        json.dump(chunks_rec, f, indent=2)
+    print(f"  -> Generated {len(chunks_rec)} recursive chunks")
+
+    print("\nRunning Strategy C: Semantic Chunking...")
+    chunks_sem = chunk_semantic(df)
+    with open(OUT_SEM_PATH, 'w', encoding='utf-8') as f:
+        json.dump(chunks_sem, f, indent=2)
+    print(f"  -> Generated {len(chunks_sem)} semantic chunks")
+    
+    print("\nDone! Ready for embeddings.")
+
+if __name__ == "__main__":
+    main()
