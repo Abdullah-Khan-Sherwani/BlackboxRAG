@@ -1,17 +1,23 @@
 """
-Evaluation module: compare fixed vs recursive vs semantic chunking strategies.
-Uses retrieval quality metrics and LLM-as-judge answer quality scoring.
+Evaluation module with Faithfulness and Relevancy metrics.
+
+Faithfulness: claim extraction → verification → % supported by context.
+Relevancy: alternate query generation → cosine similarity with original query.
+
+Uses Gemini as LLM-as-judge for both metrics.
 """
 import json
 import os
 import sys
 
+import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 import google.generativeai as genai
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.retrieval.query import load_model, init_pinecone, retrieve
+from src.retrieval.hybrid import build_bm25_index, load_reranker, hybrid_retrieve
 from src.generation.generate import init_gemini, generate_answer, GEMINI_MODEL
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -25,20 +31,160 @@ EVAL_QUERIES = [
     "What maintenance issues lead to in-flight structural failures?",
     "How do fuel management errors contribute to aviation accidents?",
     "What are the most frequent causes of controlled flight into terrain?",
+    "What factors contribute to loss of control during landing?",
+    "How does night flying increase accident risk for private pilots?",
+    "What are common causes of mid-air collisions in uncontrolled airspace?",
+    "Describe the role of fatigue in pilot error accidents",
+    "What types of mechanical failures cause forced landings?",
+    "How do icing conditions contribute to general aviation crashes?",
+    "What are the leading causes of helicopter accidents?",
+    "How does inadequate pre-flight inspection contribute to accidents?",
+    "What patterns exist in accidents involving student pilots?",
+    "How do crosswind conditions affect landing accident rates?",
+    "What role does air traffic control play in preventing mid-air collisions?",
+    "Describe common factors in accidents during instrument approaches",
 ]
 
 
-def eval_retrieval(matches):
-    """Compute retrieval quality metrics from Pinecone matches.
+def _call_gemini(prompt):
+    """Call Gemini and return the response text."""
+    model = genai.GenerativeModel(GEMINI_MODEL)
+    response = model.generate_content(prompt)
+    return response.text.strip()
 
-    Returns dict with avg_score, min_score, max_score, num_unique_reports.
+
+def _parse_json(text):
+    """Parse JSON from a Gemini response, handling markdown code blocks."""
+    if text.startswith("```"):
+        text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+    return json.loads(text)
+
+
+# ── Faithfulness ──────────────────────────────────────────────────────────────
+
+def extract_claims(answer):
+    """Use Gemini to extract factual claims from an answer."""
+    prompt = f"""Extract all distinct factual claims from the following answer.
+Return a JSON array of strings, each a single atomic claim.
+
+Answer:
+{answer}
+
+Return ONLY a JSON array like: ["claim 1", "claim 2", ...]"""
+    try:
+        return _parse_json(_call_gemini(prompt))
+    except (json.JSONDecodeError, ValueError):
+        return []
+
+
+def verify_claims(claims, context_texts):
+    """Use Gemini to verify each claim against the provided context.
+
+    Returns list of dicts with keys: claim, supported (bool), reasoning.
     """
-    if not matches:
+    if not claims:
+        return []
+
+    context_str = "\n\n".join(context_texts)
+    claims_str = "\n".join(f"{i+1}. {c}" for i, c in enumerate(claims))
+
+    prompt = f"""You are a fact-checker. For each claim below, determine if it is supported by the provided context.
+
+--- Context ---
+{context_str}
+
+--- Claims ---
+{claims_str}
+
+Return ONLY a JSON array where each element has:
+- "claim": the claim text
+- "supported": true or false
+- "reasoning": brief explanation
+
+Example: [{{"claim": "...", "supported": true, "reasoning": "..."}}]"""
+
+    try:
+        return _parse_json(_call_gemini(prompt))
+    except (json.JSONDecodeError, ValueError):
+        return [{"claim": c, "supported": False, "reasoning": "parse_error"} for c in claims]
+
+
+def compute_faithfulness(answer, context_texts):
+    """Compute faithfulness score: fraction of claims supported by context.
+
+    Returns (score, details) where score is 0.0-1.0 and details is the
+    list of verified claims.
+    """
+    claims = extract_claims(answer)
+    if not claims:
+        return 1.0, []
+
+    verified = verify_claims(claims, context_texts)
+    supported = sum(1 for v in verified if v.get("supported", False))
+    score = supported / len(verified) if verified else 0.0
+    return score, verified
+
+
+# ── Relevancy ─────────────────────────────────────────────────────────────────
+
+def generate_alternate_queries(query, n=3):
+    """Use Gemini to generate n alternate phrasings of the query."""
+    prompt = f"""Generate {n} alternative phrasings of the following question.
+Each should capture the same information need but use different wording.
+
+Question: {query}
+
+Return ONLY a JSON array of strings like: ["alt 1", "alt 2", "alt 3"]"""
+    try:
+        return _parse_json(_call_gemini(prompt))
+    except (json.JSONDecodeError, ValueError):
+        return []
+
+
+def compute_relevancy(query, answer, jina_model):
+    """Compute relevancy via cosine similarity between original query and
+    alternate queries generated from the answer.
+
+    Returns (score, alternates) where score is mean cosine similarity (0-1).
+    """
+    alternates = generate_alternate_queries(query, n=3)
+    if not alternates:
+        return 0.0, []
+
+    all_texts = [query] + alternates
+    embeddings = jina_model.encode(texts=all_texts, task="retrieval", prompt_name="query")
+    embeddings = np.array(embeddings)
+
+    query_emb = embeddings[0]
+    alt_embs = embeddings[1:]
+
+    similarities = []
+    for alt_emb in alt_embs:
+        cos_sim = np.dot(query_emb, alt_emb) / (
+            np.linalg.norm(query_emb) * np.linalg.norm(alt_emb) + 1e-10
+        )
+        similarities.append(float(cos_sim))
+
+    return float(np.mean(similarities)), alternates
+
+
+# ── Retrieval metrics ─────────────────────────────────────────────────────────
+
+def eval_retrieval(results):
+    """Compute retrieval quality metrics from results (Pinecone matches or dicts)."""
+    if not results:
         return {"avg_score": 0, "min_score": 0, "max_score": 0, "num_unique_reports": 0}
 
-    scores = [m.score for m in matches]
-    ntsb_nos = {m.metadata.get("ntsb_no", "") for m in matches}
-    ntsb_nos.discard("")
+    scores = []
+    ntsb_nos = set()
+    for r in results:
+        if hasattr(r, "score"):
+            scores.append(r.score)
+        else:
+            scores.append(r.get("score", 0))
+        ntsb = r.metadata.get("ntsb_no", "") if hasattr(r, "metadata") else r.get("ntsb_no", "")
+        if ntsb:
+            ntsb_nos.add(ntsb)
 
     return {
         "avg_score": sum(scores) / len(scores),
@@ -48,114 +194,144 @@ def eval_retrieval(matches):
     }
 
 
-def eval_answer_quality(query, answer, context_texts):
-    """Use Gemini as a judge to rate answer relevance and faithfulness.
+# ── Main evaluation loop ─────────────────────────────────────────────────────
 
-    Returns dict with relevance (1-5) and faithfulness (1-5).
-    """
-    judge_prompt = f"""You are an impartial evaluator. Given a question, an answer, and the context used to produce the answer, rate the answer on two dimensions:
+def run_evaluation(queries, strategies, jina_model, index, mode="semantic",
+                   bm25_cache=None, reranker=None):
+    """Run evaluation across all queries and strategies.
 
-1. **Relevance** (1-5): How well does the answer address the question?
-2. **Faithfulness** (1-5): Is the answer supported by the provided context without hallucination?
-
-Return ONLY a JSON object like: {{"relevance": 4, "faithfulness": 5}}
-
---- Context ---
-{chr(10).join(context_texts)}
-
---- Question ---
-{query}
-
---- Answer ---
-{answer}
-"""
-    model = genai.GenerativeModel(GEMINI_MODEL)
-    response = model.generate_content(judge_prompt)
-
-    try:
-        text = response.text.strip()
-        # Handle markdown code blocks in response
-        if text.startswith("```"):
-            text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
-        scores = json.loads(text)
-        return {
-            "relevance": int(scores.get("relevance", 0)),
-            "faithfulness": int(scores.get("faithfulness", 0)),
-        }
-    except (json.JSONDecodeError, ValueError, AttributeError):
-        print(f"  Warning: Could not parse judge response: {response.text[:200]}")
-        return {"relevance": 0, "faithfulness": 0}
-
-
-def run_evaluation(queries, strategies, model, index):
-    """Run full evaluation across all queries and strategies.
-
-    Returns a list of result dicts (one per query-strategy pair).
+    mode: "semantic" or "hybrid"
+    Returns list of result dicts.
     """
     results = []
 
-    for query in queries:
+    for qi, query in enumerate(queries):
         for strategy in strategies:
-            print(f"  Evaluating: [{strategy}] {query[:60]}...")
+            label = f"[{mode}/{strategy}] ({qi+1}/{len(queries)}) {query[:50]}..."
+            print(f"  Evaluating: {label}")
 
             # Retrieve
-            matches = retrieve(query, strategy, top_k=5, model=model, index=index)
+            if mode == "hybrid" and bm25_cache and reranker:
+                bm25, chunks = bm25_cache[strategy]
+                matches = hybrid_retrieve(
+                    query, strategy, top_k=5,
+                    model=jina_model, index=index,
+                    bm25=bm25, chunks=chunks, reranker=reranker,
+                )
+            else:
+                matches = retrieve(query, strategy, top_k=5, model=jina_model, index=index)
 
-            # Generate
+            # Extract context texts
+            context_texts = []
+            for m in matches:
+                if hasattr(m, "metadata"):
+                    context_texts.append(m.metadata.get("text", ""))
+                else:
+                    context_texts.append(m.get("text", ""))
+
+            # Generate answer
             answer = generate_answer(query, matches)
 
-            # Eval retrieval
+            # Retrieval metrics
             ret_metrics = eval_retrieval(matches)
 
-            # Eval answer quality
-            context_texts = [m.metadata.get("text", "") for m in matches]
-            ans_metrics = eval_answer_quality(query, answer, context_texts)
+            # Faithfulness
+            faith_score, faith_details = compute_faithfulness(answer, context_texts)
+
+            # Relevancy
+            rel_score, rel_alternates = compute_relevancy(query, answer, jina_model)
 
             results.append({
                 "query": query,
                 "strategy": strategy,
+                "mode": mode,
                 "answer": answer,
                 "num_chunks": len(matches),
                 **ret_metrics,
-                **ans_metrics,
+                "faithfulness": round(faith_score, 3),
+                "relevancy": round(rel_score, 3),
+                "faith_details": faith_details,
+                "rel_alternates": rel_alternates,
             })
 
     return results
 
 
+def print_detailed_examples(results, n=3):
+    """Print detailed output for n example evaluations."""
+    print(f"\n{'='*80}")
+    print(f"DETAILED EXAMPLES (first {n})")
+    print("=" * 80)
+
+    for r in results[:n]:
+        print(f"\nQuery: {r['query']}")
+        print(f"Strategy: {r['strategy']} | Mode: {r['mode']}")
+        print(f"Answer: {r['answer'][:300]}...")
+        print(f"Faithfulness: {r['faithfulness']:.3f}")
+        if r["faith_details"]:
+            for fd in r["faith_details"][:5]:
+                status = "✓" if fd.get("supported") else "✗"
+                print(f"  {status} {fd.get('claim', '')[:100]}")
+        print(f"Relevancy: {r['relevancy']:.3f}")
+        if r["rel_alternates"]:
+            for alt in r["rel_alternates"]:
+                print(f"  ~ {alt}")
+        print("-" * 80)
+
+
 def summarize(results):
-    """Group results by strategy and compute mean scores. Returns a DataFrame."""
+    """Group results by strategy+mode and compute mean scores."""
     df = pd.DataFrame(results)
-    summary = df.groupby("strategy")[
-        ["avg_score", "min_score", "max_score", "num_unique_reports", "relevance", "faithfulness"]
-    ].mean().round(3)
+    cols = ["avg_score", "num_unique_reports", "faithfulness", "relevancy"]
+    existing = [c for c in cols if c in df.columns]
+    summary = df.groupby(["mode", "strategy"])[existing].mean().round(3)
     return summary
 
 
 def main():
-    # Initialize resources
     jina_model = load_model()
     index = init_pinecone()
     init_gemini()
+    reranker = load_reranker()
 
     strategies = ["fixed", "recursive", "semantic"]
 
-    print("Running evaluation across all queries and strategies...\n")
-    results = run_evaluation(EVAL_QUERIES, strategies, jina_model, index)
+    # Pre-build BM25 indices
+    bm25_cache = {}
+    for s in strategies:
+        print(f"Building BM25 index for {s}...")
+        bm25_cache[s] = build_bm25_index(s)
+
+    print("\n--- Semantic-only evaluation ---")
+    sem_results = run_evaluation(
+        EVAL_QUERIES, strategies, jina_model, index, mode="semantic",
+    )
+
+    print("\n--- Hybrid evaluation ---")
+    hyb_results = run_evaluation(
+        EVAL_QUERIES, strategies, jina_model, index, mode="hybrid",
+        bm25_cache=bm25_cache, reranker=reranker,
+    )
+
+    all_results = sem_results + hyb_results
 
     # Save detailed results
     output_path = os.path.join(BASE_DIR, "data", "evaluation_results.csv")
-    df = pd.DataFrame(results)
-    df.to_csv(output_path, index=False)
+    df = pd.DataFrame(all_results)
+    # Drop non-serializable columns for CSV
+    df_save = df.drop(columns=["faith_details", "rel_alternates"], errors="ignore")
+    df_save.to_csv(output_path, index=False)
     print(f"\nDetailed results saved to {output_path}")
 
     # Print summary
-    summary = summarize(results)
-    print("\n" + "=" * 80)
-    print("STRATEGY COMPARISON SUMMARY")
+    summary = summarize(all_results)
+    print(f"\n{'='*80}")
+    print("EVALUATION SUMMARY")
     print("=" * 80)
     print(summary.to_string())
-    print()
+
+    # Detailed examples
+    print_detailed_examples(all_results, n=3)
 
 
 if __name__ == "__main__":
