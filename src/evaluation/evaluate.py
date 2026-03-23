@@ -209,17 +209,43 @@ def eval_retrieval(results):
 
 # ── Main evaluation loop ─────────────────────────────────────────────────────
 
+def _load_completed(output_path):
+    """Load already-completed (query, strategy, mode) tuples from a CSV."""
+    completed = set()
+    if os.path.exists(output_path):
+        df = pd.read_csv(output_path)
+        for _, row in df.iterrows():
+            completed.add((row["query"], row["strategy"], row["mode"]))
+    return completed
+
+
+def _append_result(result, output_path):
+    """Append a single result dict to the CSV (create header if new file)."""
+    row = {k: v for k, v in result.items() if k not in ("faith_details", "rel_alternates")}
+    df = pd.DataFrame([row])
+    write_header = not os.path.exists(output_path)
+    df.to_csv(output_path, mode="a", header=write_header, index=False)
+
+
 def run_evaluation(queries, strategies, jina_model, index, mode="semantic",
-                   bm25_cache=None, reranker=None):
+                   bm25_cache=None, reranker=None, output_path=None):
     """Run evaluation across all queries and strategies.
 
     mode: "semantic" or "hybrid"
+    output_path: if provided, results are saved incrementally and
+                 already-completed entries are skipped (resume support).
     Returns list of result dicts.
     """
+    completed = _load_completed(output_path) if output_path else set()
     results = []
 
     for qi, query in enumerate(queries):
         for strategy in strategies:
+            # Skip already-completed entries
+            if (query, strategy, mode) in completed:
+                print(f"  Skipping (already done): [{mode}/{strategy}] {query[:50]}...")
+                continue
+
             label = f"[{mode}/{strategy}] ({qi+1}/{len(queries)}) {query[:50]}..."
             print(f"  Evaluating: {label}")
 
@@ -254,7 +280,7 @@ def run_evaluation(queries, strategies, jina_model, index, mode="semantic",
             # Relevancy
             rel_score, rel_alternates = compute_relevancy(query, answer, jina_model)
 
-            results.append({
+            result = {
                 "query": query,
                 "strategy": strategy,
                 "mode": mode,
@@ -265,7 +291,12 @@ def run_evaluation(queries, strategies, jina_model, index, mode="semantic",
                 "relevancy": round(rel_score, 3),
                 "faith_details": faith_details,
                 "rel_alternates": rel_alternates,
-            })
+            }
+            results.append(result)
+
+            # Save incrementally
+            if output_path:
+                _append_result(result, output_path)
 
     return results
 
@@ -302,6 +333,20 @@ def summarize(results):
 
 
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Run RAG evaluation")
+    parser.add_argument("--fresh", action="store_true",
+                        help="Delete existing results and start from scratch")
+    args = parser.parse_args()
+
+    output_path = os.path.join(BASE_DIR, "data", "evaluation_results.csv")
+
+    if args.fresh and os.path.exists(output_path):
+        os.remove(output_path)
+        print("Removed existing results. Starting fresh.\n")
+    elif os.path.exists(output_path):
+        print(f"Resuming from {output_path} (use --fresh to start over)\n")
+
     jina_model = load_model()
     index = init_pinecone()
     reranker = load_reranker()
@@ -317,32 +362,31 @@ def main():
     print("\n--- Semantic-only evaluation ---")
     sem_results = run_evaluation(
         EVAL_QUERIES, strategies, jina_model, index, mode="semantic",
+        output_path=output_path,
     )
 
     print("\n--- Hybrid evaluation ---")
     hyb_results = run_evaluation(
         EVAL_QUERIES, strategies, jina_model, index, mode="hybrid",
         bm25_cache=bm25_cache, reranker=reranker,
+        output_path=output_path,
     )
 
+    # Print summary from the full CSV (includes resumed + new results)
+    if os.path.exists(output_path):
+        df = pd.read_csv(output_path)
+        summary = summarize(df.to_dict("records"))
+        print(f"\n{'='*80}")
+        print("EVALUATION SUMMARY")
+        print("=" * 80)
+        print(summary.to_string())
+
+    # Detailed examples from this run
     all_results = sem_results + hyb_results
+    if all_results:
+        print_detailed_examples(all_results, n=3)
 
-    # Save detailed results
-    output_path = os.path.join(BASE_DIR, "data", "evaluation_results.csv")
-    df = pd.DataFrame(all_results)
-    df_save = df.drop(columns=["faith_details", "rel_alternates"], errors="ignore")
-    df_save.to_csv(output_path, index=False)
-    print(f"\nDetailed results saved to {output_path}")
-
-    # Print summary
-    summary = summarize(all_results)
-    print(f"\n{'='*80}")
-    print("EVALUATION SUMMARY")
-    print("=" * 80)
-    print(summary.to_string())
-
-    # Detailed examples
-    print_detailed_examples(all_results, n=3)
+    print(f"\nResults saved to {output_path}")
 
 
 if __name__ == "__main__":
