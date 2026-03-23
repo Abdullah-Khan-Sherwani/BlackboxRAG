@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 
 from src.retrieval.query import load_model, init_pinecone, retrieve
 from src.retrieval.hybrid import build_bm25_index, load_reranker, hybrid_retrieve
-from src.generation.generate import init_gemini, generate_answer
+from src.generation.generate import generate_answer
 from src.evaluation.evaluate import compute_faithfulness, compute_relevancy
 
 # ── Page config ───────────────────────────────────────────────────────────────
@@ -46,12 +46,6 @@ def get_bm25(strategy):
     return build_bm25_index(strategy)
 
 
-@st.cache_resource(show_spinner="Configuring Gemini...")
-def setup_gemini():
-    init_gemini()
-    return True
-
-
 # ── Sidebar controls ─────────────────────────────────────────────────────────
 
 with st.sidebar:
@@ -77,7 +71,7 @@ with st.sidebar:
     st.divider()
     st.markdown("**Model info**")
     st.markdown("- Embeddings: Jina v5 (768-dim)")
-    st.markdown("- Generator: Gemini 2.0 Flash")
+    st.markdown("- Generator: DeepSeek V3.2 (NVIDIA)")
     st.markdown("- Reranker: ms-marco-MiniLM-L-6-v2")
 
 
@@ -92,7 +86,6 @@ if query:
     # Load resources
     jina_model = get_jina_model()
     index = get_pinecone_index()
-    setup_gemini()
 
     is_hybrid = "Hybrid" in mode
 
@@ -137,8 +130,8 @@ if query:
             if faith_details:
                 with st.expander("Claim verification details"):
                     for fd in faith_details:
-                        icon = "✅" if fd.get("supported") else "❌"
-                        st.markdown(f"{icon} **{fd.get('claim', '')}**")
+                        icon = "+" if fd.get("supported") else "-"
+                        st.markdown(f"**{icon}** {fd.get('claim', '')}")
                         st.caption(fd.get("reasoning", ""))
 
         with col2:
