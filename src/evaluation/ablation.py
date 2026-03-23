@@ -1,5 +1,5 @@
 """
-Ablation study: 3 chunking strategies × 2 retrieval modes = 6 configurations.
+Ablation study: 3 chunking strategies x 2 retrieval modes = 6 configurations.
 
 Runs evaluation for each config and outputs data/ablation_summary.csv.
 """
@@ -11,7 +11,6 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.retrieval.query import load_model, init_pinecone
 from src.retrieval.hybrid import build_bm25_index, load_reranker
-from src.generation.generate import init_gemini
 from src.evaluation.evaluate import (
     EVAL_QUERIES, run_evaluation, summarize,
 )
@@ -23,11 +22,9 @@ MODES = ["semantic", "hybrid"]
 
 def run_ablation():
     """Run the full ablation study and save results."""
-    # Initialize shared resources
     print("Loading models...")
     jina_model = load_model()
     index = init_pinecone()
-    init_gemini()
     reranker = load_reranker()
 
     # Pre-build BM25 indices

@@ -4,7 +4,7 @@ Evaluation module with Faithfulness and Relevancy metrics.
 Faithfulness: claim extraction → verification → % supported by context.
 Relevancy: alternate query generation → cosine similarity with original query.
 
-Uses Gemini as LLM-as-judge for both metrics.
+Uses DeepSeek V3.2 as LLM-as-judge for both metrics.
 """
 import json
 import os
@@ -12,13 +12,12 @@ import sys
 
 import numpy as np
 import pandas as pd
-from dotenv import load_dotenv
-import google.generativeai as genai
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from src.llm.client import call_llm
 from src.retrieval.query import load_model, init_pinecone, retrieve
 from src.retrieval.hybrid import build_bm25_index, load_reranker, hybrid_retrieve
-from src.generation.generate import init_gemini, generate_answer, GEMINI_MODEL
+from src.generation.generate import generate_answer
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -46,15 +45,8 @@ EVAL_QUERIES = [
 ]
 
 
-def _call_gemini(prompt):
-    """Call Gemini and return the response text."""
-    model = genai.GenerativeModel(GEMINI_MODEL)
-    response = model.generate_content(prompt)
-    return response.text.strip()
-
-
 def _parse_json(text):
-    """Parse JSON from a Gemini response, handling markdown code blocks."""
+    """Parse JSON from an LLM response, handling markdown code blocks."""
     if text.startswith("```"):
         text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
     return json.loads(text)
@@ -63,22 +55,29 @@ def _parse_json(text):
 # ── Faithfulness ──────────────────────────────────────────────────────────────
 
 def extract_claims(answer):
-    """Use Gemini to extract factual claims from an answer."""
-    prompt = f"""Extract all distinct factual claims from the following answer.
-Return a JSON array of strings, each a single atomic claim.
+    """Extract factual claims from an answer using the LLM."""
+    prompt = f"""You are an expert fact-checker for aviation accident analysis.
+Your task is to extract all distinct factual claims from the provided answer.
 
-Answer:
+===Answer===
 {answer}
 
-Return ONLY a JSON array like: ["claim 1", "claim 2", ...]"""
+===Return Requirements===
+1. The output must be a properly formatted JSON array of strings.
+2. Each string must be a single atomic factual claim (one fact per item).
+3. Do NOT include opinions, hedging language, or meta-commentary.
+4. Do NOT include any additional explanation, commentary, or text outside of the JSON array.
+5. The output must include only the JSON array and no additional text before or after it.
+
+Example: ["claim 1", "claim 2", "claim 3"]"""
     try:
-        return _parse_json(_call_gemini(prompt))
+        return _parse_json(call_llm(prompt))
     except (json.JSONDecodeError, ValueError):
         return []
 
 
 def verify_claims(claims, context_texts):
-    """Use Gemini to verify each claim against the provided context.
+    """Verify each claim against the provided context using the LLM.
 
     Returns list of dicts with keys: claim, supported (bool), reasoning.
     """
@@ -88,23 +87,29 @@ def verify_claims(claims, context_texts):
     context_str = "\n\n".join(context_texts)
     claims_str = "\n".join(f"{i+1}. {c}" for i, c in enumerate(claims))
 
-    prompt = f"""You are a fact-checker. For each claim below, determine if it is supported by the provided context.
+    prompt = f"""You are an impartial fact-checker for aviation accident analysis.
+Your task is to verify each claim against the provided context and determine if it is supported.
 
---- Context ---
+===Context===
 {context_str}
 
---- Claims ---
+===Claims===
 {claims_str}
 
-Return ONLY a JSON array where each element has:
-- "claim": the claim text
-- "supported": true or false
-- "reasoning": brief explanation
+===Return Requirements===
+1. The output must be a properly formatted JSON array.
+2. Each element must have exactly three keys: "claim", "supported", "reasoning".
+3. "claim": the original claim text.
+4. "supported": boolean true if the claim is directly supported by the context, false otherwise.
+5. "reasoning": a brief one-sentence explanation citing the relevant context.
+6. All judgments must be derived from the provided context only. No external knowledge is permitted.
+7. Do NOT include any additional explanation, commentary, or text outside of the JSON array.
+8. The output must include only the JSON array and no additional text before or after it.
 
 Example: [{{"claim": "...", "supported": true, "reasoning": "..."}}]"""
 
     try:
-        return _parse_json(_call_gemini(prompt))
+        return _parse_json(call_llm(prompt))
     except (json.JSONDecodeError, ValueError):
         return [{"claim": c, "supported": False, "reasoning": "parse_error"} for c in claims]
 
@@ -128,15 +133,23 @@ def compute_faithfulness(answer, context_texts):
 # ── Relevancy ─────────────────────────────────────────────────────────────────
 
 def generate_alternate_queries(query, n=3):
-    """Use Gemini to generate n alternate phrasings of the query."""
-    prompt = f"""Generate {n} alternative phrasings of the following question.
-Each should capture the same information need but use different wording.
+    """Generate n alternate phrasings of the query using the LLM."""
+    prompt = f"""You are an aviation safety research assistant.
+Your task is to generate {n} alternative phrasings of the following question about aviation accidents.
 
-Question: {query}
+===Question===
+{query}
 
-Return ONLY a JSON array of strings like: ["alt 1", "alt 2", "alt 3"]"""
+===Return Requirements===
+1. Each alternative must capture the same information need but use different wording.
+2. Maintain aviation domain terminology where appropriate.
+3. The output must be a properly formatted JSON array of exactly {n} strings.
+4. Do NOT include any additional explanation, commentary, or text outside of the JSON array.
+5. The output must include only the JSON array and no additional text before or after it.
+
+Example: ["alt 1", "alt 2", "alt 3"]"""
     try:
-        return _parse_json(_call_gemini(prompt))
+        return _parse_json(call_llm(prompt))
     except (json.JSONDecodeError, ValueError):
         return []
 
@@ -270,7 +283,7 @@ def print_detailed_examples(results, n=3):
         print(f"Faithfulness: {r['faithfulness']:.3f}")
         if r["faith_details"]:
             for fd in r["faith_details"][:5]:
-                status = "✓" if fd.get("supported") else "✗"
+                status = "+" if fd.get("supported") else "-"
                 print(f"  {status} {fd.get('claim', '')[:100]}")
         print(f"Relevancy: {r['relevancy']:.3f}")
         if r["rel_alternates"]:
@@ -291,7 +304,6 @@ def summarize(results):
 def main():
     jina_model = load_model()
     index = init_pinecone()
-    init_gemini()
     reranker = load_reranker()
 
     strategies = ["fixed", "recursive", "semantic"]
@@ -318,7 +330,6 @@ def main():
     # Save detailed results
     output_path = os.path.join(BASE_DIR, "data", "evaluation_results.csv")
     df = pd.DataFrame(all_results)
-    # Drop non-serializable columns for CSV
     df_save = df.drop(columns=["faith_details", "rel_alternates"], errors="ignore")
     df_save.to_csv(output_path, index=False)
     print(f"\nDetailed results saved to {output_path}")
