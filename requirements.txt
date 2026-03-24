@@ -16,3 +16,5 @@ openai
 tenacity
 rank-bm25
 streamlit
+docling
+datasets
