@@ -1092,3 +1092,132 @@ What are common causes of engine failure during takeoff?,fixed,hybrid,"Based on 
 
 ### Conclusion:
 The context excerpts do not provide sufficient information to identify common causes of engine failure during takeoff. In multiple cases (CEN19MA190, ERA18FA046), the specific reason for the power loss or thrust reduction could not be determined due to investigative limitations such as fire and impact damage.",5,0.8839536368846893,-0.1777660846710205,1.9934301376342773,4,1.0,0.956
+What are common causes of engine failure during takeoff?,recursive,hybrid,"Based on the provided context excerpts from NTSB accident reports, here are the common causes of engine failure during takeoff, categorized by relevant factors:
+
+**Aircraft/Mechanical Factors:**
+- Detonation (uncontrolled explosive ignition in cylinders), which can cause engine overheating, roughness, or loss of power. Contributing operational causes include using lower fuel grade than specified, high manifold pressure with low RPM, excessively lean mixture at high power, and reduced cylinder cooling during extended ground operations or steep climbs (ERA23FA188).
+- Undetermined reasons for partial or complete loss of engine power, as physical evidence was sometimes unavailable or inconclusive (e.g., ERA19LA096, WPR16FA116, CEN19MA190).
+
+**Human Factors:**
+- Failure to follow manufacturer procedures, such as not using checklists, which may lead to improper engine management or mishandling of emergencies (CEN19MA190).
+- Poor decision-making, such as continuing flight with known engine issues rather than diverting immediately (ERA19LA096).
+- Inadequate response to engine problems, including failure to maintain airspeed after power loss, leading to stalls (WPR16FA116), or incorrect control inputs (e.g., applying wrong rudder) during engine thrust reduction (CEN19MA190).
+
+**Organizational Factors:**
+- Lack of adherence to manufacturer guidelines for engine operation and emergency procedures, as highlighted in reports emphasizing the importance of using proper checklists and following operational recommendations (e.g., CEN19MA190, ERA23FA188).
+
+**Note:** Environmental factors (e.g., weather) are not discussed in the provided contexts as contributors to engine failure during takeoff in these specific accidents.
+
+All findings are derived solely from the referenced NTSB reports: ERA23FA188, ERA19LA096, CEN19MA190, and WPR16FA116.",5,1.9710549235343933,0.9849664568901062,3.049952745437622,4,0.864,0.914
+What are common causes of engine failure during takeoff?,semantic,hybrid,"Based on the provided NTSB accident reports, common causes of engine failure during takeoff can be analyzed from four aspects:
+
+**Human Factors:**
+- Failure to perform pre-flight fuel checks (e.g., not sampling fuel from sump drains to check for contaminants) (ERA19FA249)
+- Not following published procedures for hot weather operations or engine start checks (ERA19FA249)
+- Previous substance use (cocaine) potentially leading to fatigue or inattention, though not conclusively linked to accident causation (ERA19FA249)
+
+**Aircraft/Mechanical Factors:**
+- Detonation (uncontrolled explosive ignition in cylinders) causing engine damage and power loss (ERA18FA046)
+- Fuel vaporization issues in fuel lines, particularly in hot ambient conditions (ERA19FA249)
+- Unknown mechanical failures where investigation could not determine exact cause despite evidence of power loss (ERA19FA249, ERA18FA046)
+
+**Environmental Factors:**
+- High ambient temperatures (30°C/86°F) contributing to potential fuel vaporization problems (ERA19FA249)
+
+**Organizational Factors:**
+- No specific organizational factors were identified in these reports as primary causes of engine failure during takeoff.
+
+The context shows that investigations sometimes cannot determine definitive causes (ERA19FA249, ERA18FA046), highlighting the complex nature of engine failure analysis. Partial power loss appears more common than complete failure (ERA23FA188).
+
+Report References: ERA23FA188, ERA18FA046, ERA19FA249",5,0.42286761179566384,-0.46745380759239197,1.6388251781463623,5,0.5,0.905
+Cessna accidents in instrument meteorological conditions,fixed,hybrid,"Based on the provided NTSB accident reports, Cessna accidents in instrument meteorological conditions (IMC) consistently involve a combination of human factors, environmental factors, and aircraft/mechanical factors. Organizational factors are not explicitly detailed in these excerpts. Below is an analysis across these aspects:
+
+### Human Factors
+- **Spatial Disorientation**: A primary factor in multiple accidents, leading to loss of control (CEN18FA061, WPR17FA066, CEN18FA216, WPR19FA079).
+- **Loss of Aircraft Control**: Pilots failed to maintain control after entering IMC (WPR17FA066, CEN18FA216, WPR19FA079).
+- **Poor Decision-Making**: Pilots chose to operate in or continue into weather conditions below minimums or despite known risks (CEN18FA216, WPR19FA079). In WPR17FA066, personal pressure to complete the flight contributed to the accident.
+- **Exceeding Aircraft Limits**: In WPR19FA079, the pilot’s loss of control led to exceeding design stress limits and in-flight breakup.
+
+### Environmental Factors
+- **Instrument Meteorological Conditions (IMC)**: All accidents occurred in IMC, including fog, low visibility, and clouds, which directly contributed to spatial disorientation and loss of visual reference (CEN18FA061, WPR17FA066, CEN18FA216, WPR19FA079).
+- **Below Minimums Weather**: In CEN18FA216, the pilot executed an approach in weather below minimums, exacerbating the risk.
+
+### Aircraft/Mechanical Factors
+- **Weight and Balance Issues**: In CEN18FA061, the aircraft exceeded maximum weight and CG limits, which may have compounded control difficulties.
+- **Exceeding Design Limits**: In WPR19FA079, the aircraft exceeded its design stress limits during loss of control, leading to structural failure.
+
+### Organizational Factors
+The provided excerpts do not contain sufficient information to analyze organizational factors (e.g., training, oversight, or regulatory issues) for these accidents.
+
+### Summary
+These accidents highlight a pattern of pilots encountering IMC, experiencing spatial disorientation, and losing control, often exacerbated by poor decision-making and, in some cases, aircraft loading issues. The environmental context of IMC is a critical, recurring element.
+
+**Cited Reports**: CEN18FA061, WPR17FA066, CEN18FA216, WPR19FA079.",5,6.961166763305664,6.489253520965576,7.914985656738281,5,0.773,0.841
+Cessna accidents in instrument meteorological conditions,recursive,hybrid,"Based on the provided context excerpts from NTSB accident reports, here is an analysis of Cessna accidents in instrument meteorological conditions (IMC), covering relevant aspects:
+
+### Human Factors
+- **Spatial Disorientation**: A common factor in multiple accidents, leading to loss of control. For example, in CEN18FA216, spatial disorientation occurred during a missed approach in IMC. Similarly, CEN17FA361 and WPR19FA079 cite spatial disorientation after entering IMC.
+- **Decision-Making/Judgment**: Pilots often made poor decisions, such as executing approaches below minimums (CEN18FA216), departing into IMC without an instrument rating (CEN17FA361), or continuing VFR flight into deteriorating conditions (WPR19FA079).
+- **Lack of Instrument Proficiency**: In CEN17FA361, the pilot was non-instrument-rated, contributing to the loss of control.
+
+### Environmental Factors
+- **Instrument Meteorological Conditions (IMC)**: All accidents occurred in IMC, with factors like low ceilings, clouds, and reduced visibility. For instance, CEN19FA036 noted IMC with cloud coverage from 1,200 ft to 10,000 ft, and CEN19FA094 involved thunderstorm activity with rain.
+- **Weather Below Minimums**: In CEN18FA216, weather conditions were below approach minimums, influencing the pilot's decision-making.
+
+### Organizational Factors
+- **Flight Planning and Weather Briefing**: In CEN19FA094, there was no record of the pilot obtaining a weather briefing from official sources, indicating a lapse in pre-flight planning.
+
+### Aircraft/Mechanical Factors
+- No mechanical issues were cited in the provided contexts as primary causes. For example, CEN19FA036 explicitly stated no discrepancies with flight controls or systems before the accident.
+
+### Summary
+The accidents primarily stem from human factors (spatial disorientation and poor decision-making) in conjunction with environmental factors (IMC). Organizational factors like inadequate flight planning also played a role in some cases. No aircraft mechanical failures were indicated in these excerpts.
+
+**Cited Reports**: CEN18FA216, CEN17FA361, WPR19FA079, CEN19FA036, CEN19FA094.",5,6.7589524269104,6.635741710662842,7.019911289215088,5,1.0,0.847
+Cessna accidents in instrument meteorological conditions,semantic,hybrid,"Based on the provided NTSB accident reports, here is an analysis of Cessna accidents in instrument meteorological conditions (IMC):
+
+### Human Factors
+- **Spatial Disorientation**: Multiple accidents (ERA19FA113, CEN18FA061, ERA19FA071) cite spatial disorientation as a key factor when pilots encountered IMC unexpectedly or without proper instrument training/proficiency.
+- **Instrument Proficiency**: ERA19FA071 specifically notes the pilot had only 8.7 hours of instrument experience out of 12 total training hours, indicating potential insufficiency for IMC operations.
+
+### Aircraft/Mechanical Factors
+- **No Preimpact Anomalies**: All reports (ERA19FA113, CEN18FA061, ERA19FA071, CEN17FA361) explicitly state post-accident examinations revealed no airframe or engine anomalies that would have precluded normal operation.
+- **Vacuum System Issues**: CEN17FA361 noted the primary vacuum pump was missing and the standby pump's rotor was fractured (though vanes were intact), potentially affecting instrument reliability.
+
+### Environmental Factors
+- **IMC Conditions**: All accidents occurred during instrument meteorological conditions with low ceilings (400-600 ft AGL in ERA19FA113, CEN18FA061, and ERA19FA071) and reduced visibility due to fog/overcast layers.
+- **Turbulence**: ERA19FA113 reported severe turbulence forecast along the route, which could exacerbate spatial disorientation.
+
+### Organizational Factors
+- **Weather Briefing Deficiencies**: ERA19FA113 notes the pilot obtained an online weather briefing indicating IMC conditions, while CEN18FA061 suggests insufficient weather assessment (FBO employees reported dense fog limiting visibility to 400 ft).
+- **Regulatory Compliance**: ERA19FA071 involved a pilot operating under Part 91 without an instrument rating, attempting an IFR flight in IMC conditions.
+
+### Specific Accident References:
+1. **ERA19FA113** (Cessna 182): Loss of control after entering IMC at 200-300 ft AGL with spatial disorientation.
+2. **CEN18FA061** (Cessna 340): Takeoff in dense fog (½ mile visibility) leading to spatial disorientation and loss of control.
+3. **ERA19FA071** (Cessna 560): Instrument-rated pilot with limited actual instrument experience lost control after entering IMC during climb.
+4. **CEN17FA361** (Cessna TR182): Vacuum system irregularities noted, though not definitively causal.
+
+All four accidents share a common chain: entry into IMC without adequate preparation or proficiency, leading to spatial disorientation and loss of control. No mechanical failures were identified as primary causes.",5,5.893031787872315,5.717597484588623,6.064206123352051,5,0.846,0.807
+How does pilot experience affect landing accident outcomes?,fixed,hybrid,"Based on the provided NTSB report excerpts, pilot experience affects landing accident outcomes in several ways, as detailed across the following aspects:
+
+### Human Factors
+- **Inadequate Compensation for Conditions**: In ANC19FA019, the pilot's ""minimal operational experience in seaplane operations"" likely reduced his situational awareness and ability to compensate for a quartering tailwind during water landing, leading to loss of control.
+- **Misjudgment and Decision Errors**: In WPR16FA172, the pilot's experience level suggested he should have been aware of crosswind and wake vortex hazards, yet he continued the approach for undetermined reasons, possibly due to fatigue or other factors from a long duty day (14.5 hours awake, 8.5 hours flying).
+- **Spatial Disorientation**: In ERA16FA100, the pilot's instrument experience (which could not be determined due to missing logbooks) may have contributed to his failure to climb during a missed approach, consistent with spatial disorientation in poor weather.
+- **Lack of Instrument Experience**: In ERA17FA017, the pilot's ""lack of flight experience in actual instrument conditions"" contributed to loss of control when maneuvering in night instrument conditions with severe weather.
+
+### Organizational Factors
+- **Inadequate Operational Control**: In ANC19FA019, the company's ""inadequate operational control of the flight release process"" resulted in assigning an inexperienced pilot to a commuter seaplane flight, directly contributing to the accident.
+- **Training and Certification Issues**: In ERA17FA195, the pilot had limited multiengine experience (96.9 hours out of 221 total) and had previously failed flight instructor certification for needing ""more training teaching takeoffs and landings,"" though this specific accident context is incomplete.
+
+### Environmental Factors
+- **Response to Weather and Wind**: In multiple accidents (e.g., ANC19FA019, WPR16FA172, ERA17FA017), pilots with insufficient experience failed to adequately respond to environmental challenges such as crosswinds, tailwinds, wake turbulence, or instrument weather conditions.
+
+### Aircraft/Mechanical Factors
+- No specific aircraft/mechanical factors directly tied to pilot experience were highlighted in the provided contexts regarding landing accidents.
+
+### Summary
+The contexts consistently show that insufficient pilot experience—whether in specific aircraft types, seaplane operations, instrument conditions, or general decision-making—contributes to landing accidents by reducing the ability to handle environmental challenges, avoid spatial disorientation, and make sound judgments. Organizational failures in assigning inexperienced pilots also play a key role.
+
+**Note**: The provided contexts are limited to five reports, so this analysis is not exhaustive but based solely on the given excerpts.",5,2.3659137010574343,-0.514358401298523,3.733583927154541,5,0.0,0.8
