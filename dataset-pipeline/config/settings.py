@@ -26,6 +26,18 @@ AVALL_ZIP_URL = (
     "?fileID=C%3A%5Cavdata%5Cavall.zip"
 )
 
+# ── NTSB AAR/AIR PDF URL Patterns ───────────────────────────────────────────
+
+NTSB_REPORT_BASE_URL = "https://www.ntsb.gov/investigations/AccidentReports/Reports"
+
+# Report prefixes: AAR (pre-2022) and AIR (2022+)
+REPORT_PREFIXES = ["AIR", "AAR"]
+
+# Year range to enumerate (2-digit): 67 = 1967, 25 = 2025
+ENUM_YEAR_START = 67   # 1967 — earliest AARs
+ENUM_YEAR_END = 25     # 2025
+ENUM_MAX_SEQUENCE = 10  # Max reports per year (most years have 1-6)
+
 # ── Download Settings ────────────────────────────────────────────────────────
 
 DOWNLOAD_DELAY_SECONDS = 0.5
