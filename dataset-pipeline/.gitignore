@@ -1,8 +1,3 @@
-data/pdfs/
-data/extracted/
-data/raw/
-data/output/
-data/tracker.db
 __pycache__/
 *.pyc
 .env
