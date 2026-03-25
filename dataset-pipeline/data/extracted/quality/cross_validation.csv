@@ -1,0 +1,4 @@
+report_id,normalized_edit_distance,levenshtein_ratio,jaccard_word_overlap,docling_words,pymupdf_words,verdict
+AIR2507,0.0422,0.9775,0.9086,3975,4013,GOOD
+AAR2105,0.0516,0.9693,0.7941,58148,53122,GOOD
+AAR0907,0.0696,0.9627,0.8814,35274,34808,GOOD
