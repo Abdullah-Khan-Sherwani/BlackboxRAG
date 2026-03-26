@@ -1,0 +1,50 @@
+query,strategy,mode,answer,num_chunks,avg_score,min_score,max_score,num_unique_reports,faithfulness,relevancy
+What are common causes of engine failure during takeoff?,fixed,semantic,"Based on the provided NTSB accident report excerpts, common causes of engine failure during takeoff can be analyzed from several aspects. Note that these findings are specific to the contexts provided and are not an exhaustive list.
+
+**Human Factors:**
+- Failure to follow prescribed procedures for hot weather operations, such as not performing a static engine runup or using auxiliary fuel pumps as required by the Pilot Operating Handbook (POH), which can contribute to engine issues during takeoff (ERA19FA249).
+- Improper diagnosis of engine problems, leading to erroneous actions such as shutting down the wrong engine, as seen in a multi-engine scenario (ERA17MA316).
+
+**Aircraft/Mechanical Factors:**
+- Fuel vapor formation in fuel lines, especially in high ambient temperatures, which can lead to starting difficulties and potential power loss if not mitigated by procedures like using auxiliary fuel pumps (ERA19FA249).
+- Bearing failure in turbine engines, which can cause confusing cockpit indications and eventual loss of engine power (ERA17MA316).
+- Detonation due to operational issues such as using lower-grade fuel, high manifold pressure with low RPM, or excessively lean mixtures at high power settings, leading to engine overheating, roughness, or power loss (ERA23FA188).
+
+**Environmental Factors:**
+- High ambient temperatures (e.g., 30°C/86°F), which increase the risk of fuel vaporization in fuel lines, particularly during engine start and takeoff phases (ERA19FA249).
+- Hot day/high altitude conditions that are conducive to fuel vapor formation, as specified in procedures for mitigating vapor lock (ERA19FA249).
+
+**Organizational Factors:**
+- Inadequate maintenance procedures, such as oil test evaluations that lack trend monitoring for contaminant levels (e.g., iron concentrations), which could prevent early detection of impending mechanical failures like bearing issues (ERA17MA316).
+
+These causes are derived directly from the contexts provided. Note that the context for ERA19FA249 indicates that the investigation was unable to determine the exact reason for the loss of engine power in that specific accident, but the factors above were identified as relevant risks or contributing elements.",5,0.7124340464,0.689126968,0.734178603,3,0.944,0.938
+What are common causes of engine failure during takeoff?,recursive,semantic,"After reviewing the provided NTSB accident reports, I can identify several common causes of engine failure during takeoff based on the specific contexts:
+
+**1. Fuel Management Issues:**
+- Failure to sample fuel from sump drains after refueling, which could detect water or contaminants (ERA19FA249)
+- Suspected fuel vapor formation in fuel lines, especially in hot conditions or high altitudes (ERA19FA249)
+
+**2. Engine Starting Problems:**
+- Difficulty starting engines, particularly when engines are hot after previous operation (ERA19FA249 mentions unsuccessful start attempts over 30 seconds)
+
+**3. Detonation Conditions:**
+- Use of lower fuel grade than specified by manufacturer
+- Operation with extremely high manifold pressures combined with low RPM
+- Operation with excessively lean mixture at high power settings
+- Extended ground operations or steep climbs reducing cylinder cooling (ERA23FA188)
+
+**4. Mechanical Failures:**
+- Piston failure due to manufacturing defects or ring insert disbonding (CEN18FA053)
+
+**5. Operational Factors:**
+- Failure to follow prescribed procedures such as:
+  - Using auxiliary fuel pumps to prevent vapor lock
+  - Performing engine run-ups to verify proper RPM before takeoff
+  - Monitoring engine instruments during critical phases (ERA23FA188, ERA19FA249)
+
+These causes are derived from specific NTSB investigations:
+- ERA23FA188 (2023-04-11) regarding detonation
+- ERA19FA249 (2019-08-17) regarding fuel vapor and starting issues
+- CEN18FA053 (2017-12-16) regarding mechanical piston failure
+
+The contexts emphasize that proper fuel grade selection, mixture management, and adherence to manufacturer procedures are critical to prevent engine failures during takeoff.",5,0.7203068096,0.70879364,0.741577208,3,0.944,0.934
