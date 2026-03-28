@@ -8,7 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.llm.client import call_llm
-from src.retrieval.query import load_model, init_pinecone, retrieve
+from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
 )
@@ -22,9 +22,14 @@ Your task is to answer the user's question based ONLY on the provided context ex
 ===Response Requirements===
 1. Analyze the question from up to four aspects where relevant: human factors, aircraft/mechanical factors, environmental factors, and organizational factors.
 2. All conclusions must be derived from the provided context. No external assumptions or interpretations are permitted.
-3. Cite specific NTSB report numbers (e.g., ERA19FA249) when referencing findings.
-4. If the context is insufficient to answer the question, state so clearly rather than speculating.
+3. Every factual claim MUST include at least one citation in this exact format: [NTSB: <report_number>].
+4. If a claim cannot be supported by the provided context, explicitly say "Insufficient context" and do not guess.
 5. Keep the response concise and well-structured.
+6. Use this structure:
+     - Evidence:
+         - bullet claims with citations
+     - Answer:
+         - synthesized conclusion based only on evidence above
 ===End of Response Requirements==="""
 
 SAMPLE_QUERIES = [
@@ -110,7 +115,7 @@ def main():
     index = init_pinecone()
     reranker = load_reranker()
 
-    strategies = ["fixed", "recursive", "semantic"]
+    strategies = available_strategies()
 
     for query in SAMPLE_QUERIES:
         for strategy in strategies:

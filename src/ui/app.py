@@ -12,7 +12,7 @@ import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.retrieval.query import load_model, init_pinecone, retrieve
+from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 from src.retrieval.hybrid import build_bm25_index, load_reranker, hybrid_retrieve
 from src.generation.generate import generate_answer
 from src.evaluation.evaluate import compute_faithfulness, compute_relevancy
@@ -51,10 +51,13 @@ def get_bm25(strategy):
 with st.sidebar:
     st.header("Settings")
 
+    strategies = available_strategies()
+    default_idx = strategies.index("recursive") if "recursive" in strategies else 0
+
     strategy = st.selectbox(
         "Chunking Strategy",
-        ["fixed", "recursive", "semantic"],
-        index=1,
+        strategies,
+        index=default_idx,
         help="Choose which chunking strategy was used for the document index.",
     )
 
@@ -67,6 +70,7 @@ with st.sidebar:
     top_k = st.slider("Number of chunks to retrieve", 3, 20, 5)
 
     run_eval = st.checkbox("Compute faithfulness & relevancy scores", value=True)
+    use_hyde = st.checkbox("Use HyDE query expansion (slower, often better recall)", value=False)
 
     st.divider()
     st.markdown("**Model info**")
@@ -98,6 +102,7 @@ if query:
                 query, strategy, top_k=top_k,
                 model=jina_model, index=index,
                 bm25=bm25, chunks=chunks, reranker=reranker,
+                use_hyde=use_hyde,
             )
         else:
             matches = retrieve(query, strategy, top_k=top_k, model=jina_model, index=index)

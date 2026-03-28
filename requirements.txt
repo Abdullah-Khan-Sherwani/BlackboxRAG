@@ -13,6 +13,7 @@ peft
 pinecone
 python-dotenv
 openai
+huggingface_hub
 tenacity
 rank-bm25
 streamlit

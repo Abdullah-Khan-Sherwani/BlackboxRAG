@@ -2161,3 +2161,110 @@ Describe common factors in accidents during instrument approaches,semantic,hybri
 - Inadequate stabilized approach procedures or guidance, as highlighted in operator manuals (DCA17FA109).
 
 These factors are derived solely from the provided contexts and illustrate recurring issues across multiple accidents during instrument approaches.",5,0.13713688254356385,-1.3636736869812012,2.035205841064453,4,0.917,0.879
+What are common causes of engine failure during takeoff?,parent,semantic,"- Evidence:
+     - Inadequate preflight fuel planning and fuel management can result in a loss of engine power due to fuel exhaustion [NTSB: CEN19FA124].
+     - Use of a lower fuel grade than specified by the manufacturer can cause detonation, leading to engine overheating, roughness, or loss of power [NTSB: ERA23FA188].
+     - Operation with an excessively lean mixture at high power settings can cause detonation and subsequent engine issues [NTSB: ERA23FA188].
+     - Vapor lock in extremely high temperatures or hot day/high altitude conditions can cause engine mis-starts or fuel system issues, requiring auxiliary fuel pump use [NTSB: ERA19FA249].
+
+- Answer:
+     Based solely on the provided context, common causes of engine failure during takeoff include:
+     - Fuel exhaustion due to inadequate preflight planning and management.
+     - Detonation from using incorrect fuel grade or excessively lean mixture at high power settings.
+     - Vapor lock in high-temperature or high-altitude conditions, leading to fuel system issues and mis-starts.",3,0.720324238,0.700983047,0.755577147,3,1.0,0.0
+Cessna accidents in instrument meteorological conditions,parent,semantic,"- Evidence:
+     - Accident ANC17FA039 involved a Cessna U206 that impacted terrain after a VFR encounter with IMC, with contributing factors including pilot decision-making/judgment, situational awareness, monitoring environment, and weather planning, as well as organizational issues related to operator and FAA oversight [NTSB: ANC17FA039].
+     - Accident WPR17FA045 involved a Cessna T210K that impacted terrain after a VFR encounter with IMC, where the non-instrument-rated pilot proceeded contrary to a recommendation to drive due to forecast IMC and mountain obscuration, and did not receive weather briefings before departure [NTSB: WPR17FA045].
+     - Accident ERA16FA100 involved a Cessna 182 that experienced loss of control in flight during an IFR flight into deteriorating weather conditions that were forecasted, with the mission pilot having received an electronic weather briefing and filed an IFR plan with an alternate destination [NTSB: ERA16FA100].
+
+- Answer:
+     Based on the provided context, Cessna accidents in instrument meteorological conditions (IMC) involved factors across human, aircraft/mechanical, environmental, and organizational aspects:
+     - Human factors: Poor decision-making/judgment, lack of situational awareness, inadequate weather planning, and failure to heed weather recommendations or use available weather briefings were evident [NTSB: ANC17FA039] [NTSB: WPR17FA045] [NTSB: ERA16FA100].
+     - Environmental factors: Encounters with IMC, below VFR minima, mountain obscuration due to clouds/precipitation/mist, and deteriorating weather with low ceilings and reduced visibility were contributing conditions [NTSB: ANC17FA039] [NTSB: WPR17FA045] [NTSB: ERA16FA100].
+     - Organizational factors: In one accident, inadequate operator policies/procedures, oversight by the operator and FAA, and operational pressures were noted [NTSB: ANC17FA039]. In another, insufficient pre-flight weather briefing from available sources was a factor [NTSB: WPR17FA045].
+     - Aircraft/mechanical factors: Insufficient context from the provided reports to determine specific aircraft or mechanical issues contributing to these accidents in IMC.",3,0.7522408366666666,0.748644888,0.755095482,3,1.0,0.779
+How does pilot experience affect landing accident outcomes?,parent,semantic,"- Evidence:
+     - A copilot with recent DC-3 type rating training (8 hours in type, 1.6 hours PIC checkride) and only two training flights in the accident aircraft had difficulty with directional control during ground operations, exhibiting ""lazy inputs"" and overcorrections [NTSB: WPR18FA201].
+     - An inexperienced pilot with only 5 hours of seaplane experience was unable to counteract lateral drift during touchdown in shifting tailwind conditions, despite crosswind landings being practiced in training but tailwind landings not being part of training for new pilots [NTSB: ANC19FA019].
+     - A captain with marginal instrument flight skills, evidenced by an unsatisfactory checkride due to poor instrument flying, consistently descended below specified altitudes and performed excessive maneuvering during approaches, contributing to an unstable approach and accident [NTSB: DCA17FA109].
+     - An organizational factor: lack of updated pilot assignment limitations led to an inexperienced pilot being assigned to a flight type beyond his experience level [NTSB: ANC19FA019].
+     - Human factors: First officer's reluctance to speak up due to authority gradient with an experienced captain prevented timely calls for missed approach [NTSB: DCA17FA109].
+
+- Answer:
+     Pilot experience significantly affects landing accident outcomes through multiple factors:
+     - **Human factors**: Inexperienced pilots demonstrate poor aircraft control (e.g., directional issues, overcorrection) [NTSB: WPR18FA201] and inability to adapt to unexpected conditions like tailwinds [NTSB: ANC19FA019]. Experienced pilots with known skill deficiencies may persist in unsafe practices [NTSB: DCA17FA109], while authority gradients can inhibit less experienced crew from intervening [NTSB: DCA17FA109].
+     - **Aircraft/mechanical factors**: Insufficient context (no evidence from provided reports).
+     - **Environmental factors**: Inexperienced pilots are more susceptible to environmental challenges (e.g., shifting winds) during landing [NTSB: ANC19FA019].
+     - **Organizational factors**: Inadequate oversight in assigning pilots to flights matching their experience level contributes to accidents [NTSB: ANC19FA019].",3,0.7002920123333333,0.68474108,0.728921,3,1.0,0.919
+What role does weather play in fatal general aviation accidents?,parent,semantic,"- Evidence:
+     - Weather is the largest single cause of aviation fatalities, with most accidents occurring when a general aviation operator encounters instrument meteorological conditions (IMC) while operating under visual flight rules (VFR) [NTSB: CEN22FA145].
+     - About two-thirds of general aviation accidents that occur in reduced visibility weather conditions are fatal, often involving spatial disorientation or controlled flight into terrain [NTSB: ERA18FA022] [NTSB: ERA23FA006].
+     - Reduced visual references, such as at night or in poor weather, require increased pilot vigilance to avoid accidents [NTSB: ERA18FA022] [NTSB: ERA23FA006].
+
+- Answer:
+     Weather is a critical factor in fatal general aviation accidents, primarily as the largest single cause of aviation fatalities. These accidents frequently occur when pilots encounter instrument meteorological conditions while operating under visual flight rules, leading to spatial disorientation or controlled flight into terrain. Reduced visibility conditions contribute significantly to fatal outcomes, emphasizing the need for careful preflight planning, weather awareness, and in-flight decision-making to mitigate risks.",3,0.7597431316666667,0.748773694,0.767774701,3,1.0,0.971
+Describe common factors in runway excursion incidents,parent,semantic,"- Evidence:
+     - Runway incursion events involving vehicles, aircraft, or persons were identified as defining events in two separate incidents [NTSB: DCA23LA125].
+     - A delayed decision to abort takeoff contributed to a runway excursion accident [NTSB: WPR19FA230].
+     - Failure to perform correct actions, including not releasing the parking brake before takeoff, was a causal factor in a runway excursion [NTSB: WPR19FA230].
+     - Task monitoring/vigilance issues by flight crews and ATC personnel were noted in runway incursion events [NTSB: DCA23LA125].
+     - Inadequate safety programs by operators were identified as organizational factors in runway incursion incidents [NTSB: DCA23LA125].
+     - Insufficient warning systems, such as the lack of a NO TAKEOFF annunciation for an engaged parking brake, contributed to a runway excursion [NTSB: WPR19FA230].
+     - Checklist deficiencies, specifically the absence of an item to ensure the parking brake is fully released before takeoff, were a contributing factor [NTSB: WPR19FA230].
+
+- Answer:
+     Based solely on the provided context, common factors in runway excursion incidents include:
+     - **Human factors**: Incorrect action performance (e.g., failure to release parking brake), lack of vigilance/task monitoring by flight crews and ATC, and delayed decision-making during aborted takeoffs [NTSB: DCA23LA125][NTSB: WPR19FA230].
+     - **Organizational factors**: Inadequate safety programs by operators and deficiencies in checklist design (e.g., missing critical pre-takeoff items) [NTSB: DCA23LA125][NTSB: WPR19FA230].
+     - **Aircraft/mechanical factors**: Lack of warning systems (e.g., NO TAKEOFF annunciation for engaged parking brakes) that could prevent unsafe conditions [NTSB: WPR19FA230].
+     - **Environmental factors**: Runway incursions involving vehicles, aircraft, or persons, though specific environmental triggers (e.g., lighting, weather) are not detailed in these excerpts [NTSB: DCA23LA125]. Insufficient context is provided to fully assess environmental contributions beyond incursion events.",3,0.6559791963333333,0.642156661,0.672338545,3,1.0,0.863
+What are common causes of engine failure during takeoff?,parent,hybrid,"- Evidence:
+     - Engine failure during takeoff can be caused by detonation, which is characterized by high cylinder head temperatures and is most likely to occur when operating at high power settings. Common operational causes include: use of a lower fuel grade than specified, operation with extremely high manifold pressures and low rpm, operation at high power settings with an excessively lean mixture, and extended ground operations or steep climbs where cylinder cooling is reduced. [NTSB: ERA23FA188]
+     - Preignition, which occurs when the fuel-air mixture ignites prior to the engine’s normal ignition event, can also cause engine failure. This is usually caused by a residual hot spot in the combustion chamber, such as from carbon deposits on spark plugs, cracked spark plug insulators, or other cylinder damage. [NTSB: ERA23FA188]
+     - Inadequate preflight fuel planning and fuel management can lead to a loss of engine power due to fuel exhaustion during takeoff or initial climb. [NTSB: CEN19FA124]
+
+- Answer:
+     Based on the provided NTSB reports, common causes of engine failure during takeoff include:
+     - Detonation due to improper fuel grade, high manifold pressure with low rpm, excessively lean mixture at high power, or inadequate cylinder cooling during extended ground ops or steep climbs. [NTSB: ERA23FA188]
+     - Preignition due to hot spots in the combustion chamber from carbon deposits, damaged spark plugs, or other cylinder issues. [NTSB: ERA23FA188]
+     - Fuel exhaustion resulting from inadequate preflight fuel planning and management. [NTSB: CEN19FA124]",3,4.406437714894612,3.7069926261901855,4.756160259246826,2,1.0,0.869
+Cessna accidents in instrument meteorological conditions,parent,hybrid,"- Evidence:
+  - Spatial disorientation resulting in loss of control occurred during a missed approach conducted in instrument meteorological conditions (IMC) [NTSB: CEN18FA216].
+  - The pilot decided to execute an instrument approach in weather conditions below approach minimums, contributing to the accident [NTSB: CEN18FA216].
+  - An accident occurred under dark night instrument meteorological conditions during an IFR flight [NTSB: CEN17FA248].
+  - An airplane encountered layered clouds and icing conditions, including super-cooled large drop icing and ice crystals, while operating in IMC [NTSB: WPR16FA054].
+  - AIRMETs for icing conditions and mountain obscuration were valid in the area at the time of the accident [NTSB: WPR16FA054].
+
+- Answer:
+  Based on the provided context, Cessna accidents in instrument meteorological conditions (IMC) involved spatial disorientation, loss of control, and adverse weather factors such as icing and low visibility. Contributing factors included pilot decisions to operate below minimums and environmental hazards like icing and obscured terrain.",3,7.281912803649902,7.093992710113525,7.530303955078125,3,1.0,0.814
+How does pilot experience affect landing accident outcomes?,parent,hybrid,"- **Evidence:**
+  - The pilot's total instrument experience, recency of experience, and experience in the accident airplane could not be determined, which may have contributed to spatial disorientation during a missed approach [NTSB: ERA16FA100].
+  - The pilot's minimal operational experience in seaplane operations likely affected his situational awareness in rapidly changing wind conditions and his ability to compensate adequately for a quartering tailwind during water landing [NTSB: ANC19FA019].
+  - The company's inadequate operational control led to the assignment of an inexperienced pilot to a commuter seaplane flight, contributing to the accident [NTSB: ANC19FA019].
+
+- **Answer:**
+Pilot experience significantly affects landing accident outcomes by influencing situational awareness, decision-making, and technical proficiency. Inadequate experience can lead to spatial disorientation in poor visibility [NTSB: ERA16FA100] or failure to manage environmental factors like crosswinds during landing [NTSB: ANC19FA019]. Organizational failures in assigning inexperienced pilots to complex operations further exacerbate these risks [NTSB: ANC19FA019].",3,2.4084300994873047,1.817232370376587,3.590825080871582,2,1.0,0.904
+What role does weather play in fatal general aviation accidents?,parent,hybrid,"### Evidence:
+- About two-thirds of general aviation accidents that occur in reduced visibility weather conditions are fatal, often involving pilot spatial disorientation or controlled flight into terrain [NTSB: ANC17FA039].
+- Even in visual weather conditions, flights at night over areas with limited ground lighting (providing few visual ground references) can be challenging [NTSB: ERA23FA006].
+- Pilots are advised to obtain official preflight weather briefings and use all appropriate sources of weather information for timely in-flight decisions [NTSB: ERA23FA006].
+- External pressures, such as the desire to save time or money or fear of disappointing passengers, should not influence pilots to attempt or continue flights in uncomfortable weather conditions [NTSB: ERA23FA006].
+- Operators may set required VFR weather minimums (e.g., 1,000-ft ceiling with 3 miles visibility), and personnel or pilots have authority to terminate flights if conditions are not met [NTSB: ERA16FA140].
+
+### Answer:
+Weather plays a significant role in fatal general aviation accidents, primarily through reduced visibility conditions that contribute to spatial disorientation and controlled flight into terrain. These conditions account for approximately two-thirds of such accidents. Challenges also arise at night with limited ground lighting. Proper weather briefing, avoidance of external pressures, and adherence to operator-set weather minimums are critical mitigations.",3,1.4655083417892456,0.7389990091323853,2.4806103706359863,3,1.0,0.964
+Describe common factors in runway excursion incidents,parent,hybrid,"- Evidence:
+     - The Cessna 560XL accident (WPR19FA230) involved a runway excursion due to the pilot's failure to release the parking brake before takeoff, producing an unexpected retarding force and nose-down pitching moment, and the flight crew's delayed decision to abort the takeoff [NTSB: WPR19FA230].
+     - Contributing factors in the Cessna accident included the lack of a NO TAKEOFF annunciation warning for an engaged parking brake and the absence of a checklist item to ensure the parking brake was fully released before takeoff [NTSB: WPR19FA230].
+     - The Boeing 737 accident (DCA19MA143) involved a runway excursion during landing, with analysis indicating that braking coefficient of friction was significantly lower than expected on wet or contaminated runways, requiring 30-40% additional stopping distance if water depth exceeds 1/8 inch [NTSB: DCA19MA143].
+     - For the Boeing 737, determining whether a runway is wet or contaminated (water depth >1/8 inch) is the pilot’s responsibility, with rainfall intensity being a key indicator; failure to adjust landing distance assessment accordingly can contribute to overruns [NTSB: DCA19MA143].
+     - In the Boeing 737 incident, the left thrust reverser was not operational and deferred per the minimum equipment list, though its direct contribution to the runway excursion is not explicitly stated in the provided context [NTSB: DCA19MA143].
+
+- Answer:
+     Based solely on the provided context, common factors in runway excursion incidents include:
+     - **Human factors**: Delayed decision to abort takeoff (e.g., parking brake engaged) [NTSB: WPR19FA230] and potential misjudgment of runway conditions (e.g., water contamination depth) during landing [NTSB: DCA19MA143].
+     - **Aircraft/mechanical factors**: Lack of warning systems (e.g., no NO TAKEOFF annunciation for parking brake engagement) [NTSB: WPR19FA230] and deferred equipment (e.g., inoperative thrust reverser) [NTSB: DCA19MA143], though the latter's role is not fully detailed.
+     - **Environmental factors**: Runway contamination, such as water depth exceeding 1/8 inch, reducing braking effectiveness and requiring increased stopping distance [NTSB: DCA19MA143].
+     - **Organizational factors**: Inadequate checklist design (e.g., missing item to verify parking brake release) [NTSB: WPR19FA230] and reliance on pilot assessment of runway conditions without sufficient systemic safeguards [NTSB: DCA19MA143].
+
+     Note: The context does not provide enough detail to fully assess organizational factors in the Boeing incident or the direct impact of the deferred thrust reverser.",3,-2.919254700342814,-3.117485523223877,-2.737610101699829,2,1.0,0.876

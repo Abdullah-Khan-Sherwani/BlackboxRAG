@@ -13,6 +13,7 @@ INDEX_NAME = "ntsb-rag"
 MODEL_NAME = "jinaai/jina-embeddings-v5-text-nano"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+ALL_STRATEGIES = ["fixed", "recursive", "semantic", "parent"]
 
 SAMPLE_QUERIES = [
     "What are common causes of engine failure during takeoff?",
@@ -32,6 +33,16 @@ def load_chunks(strategy):
             chunks = json.load(f)
         _chunks_cache[strategy] = {c["chunk_id"]: c for c in chunks}
     return _chunks_cache[strategy]
+
+
+def available_strategies():
+    """Return chunking strategies that have local chunk files available."""
+    out = []
+    for s in ALL_STRATEGIES:
+        path = os.path.join(BASE_DIR, "data", "processed", f"chunks_{s}.json")
+        if os.path.exists(path):
+            out.append(s)
+    return out
 
 
 def load_model():
@@ -60,18 +71,27 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
     Enriches each match's metadata with the full text from local JSON.
     """
     query_embedding = model.encode(texts=[query], task="retrieval", prompt_name="query")
-    results = index.query(
-        vector=query_embedding[0].tolist(),
-        top_k=top_k,
-        include_metadata=True,
-        filter={"strategy": {"$eq": strategy}},
-    )
+    try:
+        results = index.query(
+            vector=query_embedding[0].tolist(),
+            top_k=top_k,
+            include_metadata=True,
+            filter={"strategy": {"$eq": strategy}},
+        )
+    except Exception as e:
+        raise RuntimeError(
+            "Pinecone query failed (network/DNS or service issue). "
+            "Check internet/VPN and Pinecone availability, or run evaluation with BM25 fallback."
+        ) from e
 
     # Attach full text from local storage
     chunks_dict = load_chunks(strategy)
     for match in results.matches:
         local = chunks_dict.get(match.id, {})
-        match.metadata["text"] = local.get("text", "")
+        # Parent strategy uses child retrieval with parent-level context for generation.
+        match.metadata["text"] = local.get("parent_text") or local.get("text", "")
+        if "parent_id" in local:
+            match.metadata["parent_id"] = local.get("parent_id", "")
 
     return results.matches
 
@@ -91,7 +111,7 @@ def main():
     model = load_model()
     index = init_pinecone()
 
-    strategies = ["fixed", "recursive", "semantic"]
+    strategies = available_strategies()
 
     for query in SAMPLE_QUERIES:
         for strategy in strategies:
