@@ -8,6 +8,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.llm.client import call_llm
+from src.llm.ollama_client import call_ollama
 from src.retrieval.query import load_model, init_pinecone, retrieve
 from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
@@ -64,16 +65,32 @@ def build_prompt(query, retrieved_chunks):
     return SYSTEM_PROMPT, user_prompt
 
 
-def generate_answer(query, retrieved_chunks):
+def generate_answer(query, retrieved_chunks, llm_provider="deepseek", ollama_model="qwen2.5:32b"):
     """Generate an answer given the query and retrieved chunks."""
     system, user_prompt = build_prompt(query, retrieved_chunks)
+    provider = (llm_provider or "deepseek").lower()
+    if provider == "ollama":
+        return call_ollama(
+            user_prompt,
+            system_prompt=system,
+            model=ollama_model,
+            temperature=0.1,
+            max_tokens=2048,
+            timeout=240,
+        )
     return call_llm(user_prompt, system=system)
 
 
-def rag_pipeline(query, strategy, top_k=5, model=None, index=None):
+def rag_pipeline(query, strategy, top_k=5, model=None, index=None,
+                 llm_provider="deepseek", ollama_model="qwen2.5:32b"):
     """End-to-end semantic-only RAG: retrieve chunks then generate an answer."""
     matches = retrieve(query, strategy, top_k=top_k, model=model, index=index)
-    answer = generate_answer(query, matches)
+    answer = generate_answer(
+        query,
+        matches,
+        llm_provider=llm_provider,
+        ollama_model=ollama_model,
+    )
     source_ids = [m.id for m in matches]
     return {
         "query": query,
@@ -86,14 +103,20 @@ def rag_pipeline(query, strategy, top_k=5, model=None, index=None):
 
 def rag_pipeline_hybrid(query, strategy, top_k=5,
                         model=None, index=None,
-                        bm25=None, chunks=None, reranker=None):
+                        bm25=None, chunks=None, reranker=None,
+                        llm_provider="deepseek", ollama_model="qwen2.5:32b"):
     """End-to-end hybrid RAG: BM25 + semantic → RRF → rerank → generate."""
     results = hybrid_retrieve(
         query, strategy, top_k=top_k,
         model=model, index=index,
         bm25=bm25, chunks=chunks, reranker=reranker,
     )
-    answer = generate_answer(query, results)
+    answer = generate_answer(
+        query,
+        results,
+        llm_provider=llm_provider,
+        ollama_model=ollama_model,
+    )
     source_ids = [r.get("chunk_id", r.get("ntsb_no", "unknown")) for r in results]
     return {
         "query": query,

@@ -23,11 +23,23 @@ SAMPLE_QUERIES = [
 # Cache for local chunk lookups: {strategy: {chunk_id: chunk_dict}}
 _chunks_cache = {}
 
+CHUNK_FILE_BY_STRATEGY = {
+    "fixed": "chunks_fixed.json",
+    "recursive": "chunks_recursive.json",
+    "semantic": "chunks_semantic.json",
+    "section": "chunks_md_section.json",
+}
+
 
 def load_chunks(strategy):
     """Load and cache the local chunks JSON for a strategy."""
     if strategy not in _chunks_cache:
-        path = os.path.join(BASE_DIR, "data", "processed", f"chunks_{strategy}.json")
+        filename = CHUNK_FILE_BY_STRATEGY.get(strategy, f"chunks_{strategy}.json")
+        path = os.path.join(BASE_DIR, "data", "processed", filename)
+        if not os.path.exists(path):
+            raise FileNotFoundError(
+                f"Chunks file not found for strategy '{strategy}': {path}"
+            )
         with open(path, "r", encoding="utf-8") as f:
             chunks = json.load(f)
         _chunks_cache[strategy] = {c["chunk_id"]: c for c in chunks}
@@ -59,7 +71,10 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
 
     Enriches each match's metadata with the full text from local JSON.
     """
-    query_embedding = model.encode(texts=[query], task="retrieval", prompt_name="query")
+    try:
+        query_embedding = model.encode(texts=[query], task="retrieval", prompt_name="query")
+    except ValueError:
+        query_embedding = model.encode(texts=[query], task="retrieval")
     results = index.query(
         vector=query_embedding[0].tolist(),
         top_k=top_k,
@@ -91,7 +106,7 @@ def main():
     model = load_model()
     index = init_pinecone()
 
-    strategies = ["fixed", "recursive", "semantic"]
+    strategies = ["section", "fixed", "recursive", "semantic"]
 
     for query in SAMPLE_QUERIES:
         for strategy in strategies:

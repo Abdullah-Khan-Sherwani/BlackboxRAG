@@ -10,8 +10,15 @@ from sentence_transformers import CrossEncoder
 from src.retrieval.query import load_model, init_pinecone, retrieve
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-STRATEGIES = ["fixed", "recursive", "semantic"]
+STRATEGIES = ["section", "fixed", "recursive", "semantic"]
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+CHUNK_FILE_BY_STRATEGY = {
+    "fixed": "chunks_fixed.json",
+    "recursive": "chunks_recursive.json",
+    "semantic": "chunks_semantic.json",
+    "section": "chunks_md_section.json",
+}
 
 
 def build_bm25_index(strategy):
@@ -19,7 +26,8 @@ def build_bm25_index(strategy):
 
     Returns (BM25Okapi, list[dict]) — the index and the original chunk dicts.
     """
-    path = os.path.join(BASE_DIR, "data", "processed", f"chunks_{strategy}.json")
+    filename = CHUNK_FILE_BY_STRATEGY.get(strategy, f"chunks_{strategy}.json")
+    path = os.path.join(BASE_DIR, "data", "processed", filename)
     with open(path, "r", encoding="utf-8") as f:
         chunks = json.load(f)
 

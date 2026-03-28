@@ -5,10 +5,18 @@ Uses DeepSeek V3.1 via NVIDIA's OpenAI-compatible API.
 Handles initialization, retries, and error handling.
 """
 import os
+from typing import Any
 
 from dotenv import load_dotenv
-from openai import OpenAI, RateLimitError
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
+
+try:
+    from openai import OpenAI, RateLimitError
+except ImportError:  # Allow Ollama-only runs without OpenAI package installed.
+    OpenAI = None
+
+    class RateLimitError(Exception):
+        pass
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
@@ -16,13 +24,18 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 MODEL = "deepseek-ai/deepseek-v3.1"
 BASE_URL = "https://integrate.api.nvidia.com/v1"
 
-_client: OpenAI | None = None
+_client: Any | None = None
 
 
-def _get_client() -> OpenAI:
+def _get_client() -> Any:
     """Lazy-initialize the OpenAI client (module-level singleton)."""
     global _client
     if _client is None:
+        if OpenAI is None:
+            raise RuntimeError(
+                "OpenAI package is not installed. Install 'openai' only if using DeepSeek/NVIDIA API. "
+                "For local usage, select Ollama in the UI."
+            )
         api_key = os.environ.get("NVIDIA_API_KEY")
         if not api_key:
             raise RuntimeError(

@@ -51,10 +51,23 @@ def get_bm25(strategy):
 with st.sidebar:
     st.header("Settings")
 
+    llm_provider_label = st.selectbox(
+        "Generator",
+        ["Ollama (Local)", "DeepSeek (NVIDIA API)"],
+        index=0,
+        help="Choose which LLM generates the final answer from retrieved chunks.",
+    )
+    llm_provider = "ollama" if "Ollama" in llm_provider_label else "deepseek"
+    ollama_model = st.text_input(
+        "Ollama Model",
+        value="qwen2.5:32b",
+        help="Used only when Generator is set to Ollama (Local).",
+    )
+
     strategy = st.selectbox(
         "Chunking Strategy",
-        ["fixed", "recursive", "semantic"],
-        index=1,
+        ["section", "fixed", "recursive", "semantic"],
+        index=0,
         help="Choose which chunking strategy was used for the document index.",
     )
 
@@ -71,7 +84,10 @@ with st.sidebar:
     st.divider()
     st.markdown("**Model info**")
     st.markdown("- Embeddings: Jina v5 (768-dim)")
-    st.markdown("- Generator: DeepSeek V3.2 (NVIDIA)")
+    if llm_provider == "ollama":
+        st.markdown(f"- Generator: {ollama_model} (Ollama local)")
+    else:
+        st.markdown("- Generator: DeepSeek V3.2 (NVIDIA)")
     st.markdown("- Reranker: ms-marco-MiniLM-L-6-v2")
 
 
@@ -112,7 +128,12 @@ if query:
 
     # Generate
     with st.spinner("Generating answer..."):
-        answer = generate_answer(query, matches)
+        answer = generate_answer(
+            query,
+            matches,
+            llm_provider=llm_provider,
+            ollama_model=ollama_model,
+        )
 
     # Display answer
     st.subheader("Answer")
