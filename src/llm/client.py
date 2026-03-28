@@ -11,6 +11,11 @@ from dotenv import load_dotenv
 from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 try:
+    from huggingface_hub import InferenceClient
+except ImportError:
+    InferenceClient = None
+
+try:
     from openai import OpenAI, RateLimitError
 except ImportError:  # Allow Ollama-only runs without OpenAI package installed.
     OpenAI = None
@@ -23,8 +28,10 @@ load_dotenv(os.path.join(BASE_DIR, ".env"))
 
 MODEL = "deepseek-ai/deepseek-v3.1"
 BASE_URL = "https://integrate.api.nvidia.com/v1"
+HF_EVAL_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 
 _client: Any | None = None
+_hf_client: Any | None = None
 
 
 def _get_client() -> Any:
@@ -43,6 +50,19 @@ def _get_client() -> Any:
             )
         _client = OpenAI(base_url=BASE_URL, api_key=api_key)
     return _client
+
+
+def _get_hf_client() -> InferenceClient:
+    """Lazy-initialize the Hugging Face Inference client."""
+    global _hf_client
+    if _hf_client is None:
+        if InferenceClient is None:
+            raise RuntimeError(
+                "huggingface_hub is not installed. Install it to use EVAL_LLM_PROVIDER=hf."
+            )
+        hf_token = os.environ.get("HF_TOKEN") or os.environ.get("HUGGINGFACEHUB_API_TOKEN")
+        _hf_client = InferenceClient(token=hf_token)
+    return _hf_client
 
 
 @retry(
@@ -72,3 +92,28 @@ def call_llm(prompt: str, system: str | None = None) -> str:
         temperature=0.2,
     )
     return response.choices[0].message.content.strip()
+
+
+def call_eval_llm(prompt: str, system: str | None = None) -> str:
+    """Call evaluation judge model.
+
+    Backend is controlled by EVAL_LLM_PROVIDER env var:
+    - "nvidia" (default): NVIDIA OpenAI-compatible endpoint
+    - "hf": Hugging Face Inference API
+    """
+    provider = os.environ.get("EVAL_LLM_PROVIDER", "nvidia").strip().lower()
+
+    if provider == "hf":
+        model = os.environ.get("EVAL_HF_MODEL", HF_EVAL_MODEL)
+        combined_prompt = prompt if not system else f"System:\n{system}\n\nUser:\n{prompt}"
+        out = _get_hf_client().text_generation(
+            combined_prompt,
+            model=model,
+            max_new_tokens=700,
+            temperature=0.0,
+            do_sample=False,
+        )
+        return out.strip()
+
+    # Default to NVIDIA path for eval too.
+    return call_llm(prompt, system=system)

@@ -12,19 +12,19 @@ import streamlit as st
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from src.retrieval.query import load_model, init_pinecone, retrieve
+from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 from src.retrieval.hybrid import build_bm25_index, load_reranker, hybrid_retrieve
 from src.generation.generate import generate_answer
 from src.evaluation.evaluate import compute_faithfulness, compute_relevancy
 
-# ── Page config ───────────────────────────────────────────────────────────────
+# -- Page config ---------------------------------------------------------------
 
 st.set_page_config(page_title="NTSB RAG System", page_icon="✈️", layout="wide")
 st.title("✈️ NTSB Aviation Accident RAG System")
 st.caption("Retrieval-Augmented Generation over NTSB accident reports")
 
 
-# ── Resource caching ─────────────────────────────────────────────────────────
+# -- Resource caching ----------------------------------------------------------
 
 @st.cache_resource(show_spinner="Loading Jina embedding model...")
 def get_jina_model():
@@ -46,7 +46,7 @@ def get_bm25(strategy):
     return build_bm25_index(strategy)
 
 
-# ── Sidebar controls ─────────────────────────────────────────────────────────
+# -- Sidebar controls ----------------------------------------------------------
 
 with st.sidebar:
     st.header("Settings")
@@ -64,10 +64,22 @@ with st.sidebar:
         help="Used only when Generator is set to Ollama (Local).",
     )
 
+    strategies = available_strategies()
+    if not strategies:
+        st.error("No local chunk files were found in data/processed. Build chunks first.")
+        st.stop()
+
+    if "section" in strategies:
+        default_idx = strategies.index("section")
+    elif "recursive" in strategies:
+        default_idx = strategies.index("recursive")
+    else:
+        default_idx = 0
+
     strategy = st.selectbox(
         "Chunking Strategy",
-        ["section", "fixed", "recursive", "semantic"],
-        index=0,
+        strategies,
+        index=default_idx,
         help="Choose which chunking strategy was used for the document index.",
     )
 
@@ -80,6 +92,7 @@ with st.sidebar:
     top_k = st.slider("Number of chunks to retrieve", 3, 20, 5)
 
     run_eval = st.checkbox("Compute faithfulness & relevancy scores", value=True)
+    use_hyde = st.checkbox("Use HyDE query expansion (slower, often better recall)", value=False)
 
     st.divider()
     st.markdown("**Model info**")
@@ -91,7 +104,7 @@ with st.sidebar:
     st.markdown("- Reranker: ms-marco-MiniLM-L-6-v2")
 
 
-# ── Main area ─────────────────────────────────────────────────────────────────
+# -- Main area ----------------------------------------------------------------
 
 query = st.text_input(
     "Ask a question about NTSB aviation accidents:",
@@ -111,9 +124,15 @@ if query:
             reranker = get_reranker()
             bm25, chunks = get_bm25(strategy)
             matches = hybrid_retrieve(
-                query, strategy, top_k=top_k,
-                model=jina_model, index=index,
-                bm25=bm25, chunks=chunks, reranker=reranker,
+                query,
+                strategy,
+                top_k=top_k,
+                model=jina_model,
+                index=index,
+                bm25=bm25,
+                chunks=chunks,
+                reranker=reranker,
+                use_hyde=use_hyde,
             )
         else:
             matches = retrieve(query, strategy, top_k=top_k, model=jina_model, index=index)
@@ -176,11 +195,13 @@ if query:
             score = m.get("score", 0)
 
         with st.expander(
-            f"[{i}] NTSB {meta.get('ntsb_no', 'N/A')} — "
+            f"[{i}] NTSB {meta.get('ntsb_no', 'N/A')} - "
             f"{meta.get('make', '')} {meta.get('model', '')} | "
             f"Score: {score:.4f}"
         ):
             st.markdown(f"**Date:** {meta.get('event_date', 'N/A')}")
-            st.markdown(f"**Phase:** {meta.get('phase_of_flight', 'N/A')} | "
-                        f"**Weather:** {meta.get('weather', 'N/A')}")
+            st.markdown(
+                f"**Phase:** {meta.get('phase_of_flight', 'N/A')} | "
+                f"**Weather:** {meta.get('weather', 'N/A')}"
+            )
             st.text(meta.get("text", "")[:1000])

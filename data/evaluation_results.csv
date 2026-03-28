@@ -1,50 +1,158 @@
 query,strategy,mode,answer,num_chunks,avg_score,min_score,max_score,num_unique_reports,faithfulness,relevancy
-What are common causes of engine failure during takeoff?,fixed,semantic,"Based on the provided NTSB accident report excerpts, common causes of engine failure during takeoff can be analyzed from several aspects. Note that these findings are specific to the contexts provided and are not an exhaustive list.
+What are common causes of engine failure during takeoff?,fixed,semantic,"The NTSB reports indicate engine failures during takeoff can result from fuel system issues and improper engine management procedures. Here are the common causes supported by evidence:
+
+**Evidence:**
+- Failure to sample fuel after refueling to check for water/contaminants [NTSB: ERA19FA249]
+- Vapor lock formation in fuel lines due to high ambient temperatures (30°C/86°F noted) [NTSB: ERA19FA249]
+- Improper use of auxiliary fuel pumps and cowl flaps during takeoff [NTSB: ERA19FA249]
+- Detonation caused by uncontrolled fuel-air mixture ignition, leading to excessive temperatures/pressures [NTSB: ERA23FA188]
+- Operational factors like using lower fuel grade than specified, high manifold pressures with low RPM, or excessively lean mixtures [NTSB: ERA23FA188]
+
+**Answer:**  
+Common causes include fuel contamination, vapor lock due to high temperatures, improper auxiliary system management, and detonation from incorrect fuel-air mixtures or operational practices.",3,0.7229169890000001,0.709459364,0.734178603,2,0.857,0.895
+What are common causes of engine failure during takeoff?,recursive,semantic,"- Evidence:
+     - Use of a lower fuel grade than specified by the manufacturer can cause detonation, leading to engine overheating, roughness, or loss of power [NTSB: ERA23FA188].
+     - Operation with extremely high manifold pressures and low rpm, or at high power settings with an excessively lean mixture, can cause detonation and potential engine issues [NTSB: ERA23FA188].
+     - Extended ground operations or steep climbs that reduce cylinder cooling may lead to detonation [NTSB: ERA23FA188].
+     - Vapor lock in extremely high temperatures can cause engine mis-starts or issues, especially if auxiliary fuel pumps are not used as prescribed [NTSB: ERA19FA249].
+     - Failure to follow procedures like using auxiliary fuel pumps during takeoff or hot day operations may contribute to vapor-related engine problems [NTSB: ERA19FA249].
+     - Fuel contamination (e.g., water or visible contaminants) could be a factor if not detected through proper sump draining, though no anomalies were found in one case [NTSB: ERA19FA249].
+
+- Answer:
+Common causes of engine failure during takeoff, based on the provided context, include:
+     - Detonation due to incorrect fuel grade, improper mixture settings, high power operations with low cooling, or extended steep climbs [NTSB: ERA23FA188].
+     - Vapor lock or fuel vapor formation in high-temperature conditions, especially if auxiliary fuel pumps are not activated as required [NTSB: ERA19FA249].
+     - Potential fuel contamination, though this was not confirmed in one instance [NTSB: ERA19FA249].
+Insufficient context is available to address human, organizational, or broader environmental factors beyond these mechanical and operational issues.",3,0.7276898026666667,0.71549803,0.741577208,2,1.0,0.875
+What are common causes of engine failure during takeoff?,semantic,semantic,"- Evidence:
+  - Detonation, an uncontrolled explosive ignition within the cylinder, can cause engine overheating, roughness, or loss of power, often due to using a lower fuel grade than specified [NTSB: ERA23FA188].
+  - Manufacturing anomalies, such as the disbonding of a piston ring insert from the piston body, can lead to piston failure and engine power loss [NTSB: CEN18FA053].
+  - Severe detonation damage to a cylinder piston can result in catastrophic engine failure, though the specific reason for detonation may not always be determinable [NTSB: ERA18FA046].
+
+- Answer:
+  Based on the provided context, common causes of engine failure during takeoff include:
+  1. **Detonation** due to factors like using lower-grade fuel than specified, leading to uncontrolled combustion, overheating, and power loss [NTSB: ERA23FA188][NTSB: ERA18FA046].
+  2. **Manufacturing anomalies** in engine components, such as disbonding of piston ring inserts, which can cause piston failure and subsequent power loss [NTSB: CEN18FA053].
+  Insufficient context is available to identify other causes beyond these two.",3,0.7109909256666667,0.68790251,0.74200058,3,1.0,0.918
+What are common causes of engine failure during takeoff?,parent,semantic,"- Evidence:
+     - Inadequate preflight fuel planning and fuel management can result in a loss of engine power due to fuel exhaustion [NTSB: CEN19FA124].
+     - Use of a lower fuel grade than specified by the manufacturer can cause detonation, leading to engine overheating, roughness, or loss of power [NTSB: ERA23FA188].
+     - Operation with an excessively lean mixture at high power settings can cause detonation, contributing to engine failure [NTSB: ERA23FA188].
+     - Vapor lock in extremely high temperatures or hot day/high altitude conditions can cause engine mis-starts or fuel system issues, requiring auxiliary fuel pump use [NTSB: ERA19FA249].
+
+- Answer:
+     Based on the provided NTSB reports, common causes of engine failure during takeoff include:
+          - Inadequate preflight fuel planning and management leading to fuel exhaustion.
+          - Use of incorrect fuel grade.
+          - Excessively lean mixture at high power settings.
+          - Vapor lock in high-temperature or high-altitude conditions.",3,0.720324238,0.700983047,0.755577147,3,1.0,0.0
+Cessna accidents in instrument meteorological conditions,fixed,semantic,"- **Evidence:**
+  - The pilot failed to maintain airplane control upon entering instrument meteorological conditions (IMC), resulting in an aerodynamic stall [NTSB: WPR17FA066].
+  - The pilot experienced spatial disorientation after entering IMC during climb, leading to exceedance of design stress limits and in-flight breakup [NTSB: WPR19FA079].
+  - The pilot's personal pressure to complete the flight despite weather conditions contributed to the accident [NTSB: WPR17FA066].
+  - The pilot made an improper decision to conduct the flight under visual flight rules and continue when conditions deteriorated [NTSB: WPR19FA079].
+  - Weather conditions deteriorated to IMC with low ceilings, reduced visibility, and fog, which were forecasted [NTSB: ERA16FA100].
+
+- **Answer:**
+  - Based on the provided NTSB reports, Cessna accidents in instrument meteorological conditions (IMC) primarily involve loss of aircraft control due to pilot factors, including failure to maintain control, spatial disorientation, and poor decision-making under deteriorating weather. Contributing factors include personal pressure to complete flights and improper continuation into IMC. Environmental factors, such as forecast and actual IMC conditions, also play a critical role. Organizational factors are not explicitly detailed in the provided excerpts.",3,0.7441244123333334,0.741156518,0.749732077,3,1.0,0.897
+Cessna accidents in instrument meteorological conditions,recursive,semantic,"Let's analyze the provided context excerpts from NTSB accident reports:
 
 **Human Factors:**
-- Failure to follow prescribed procedures for hot weather operations, such as not performing a static engine runup or using auxiliary fuel pumps as required by the Pilot Operating Handbook (POH), which can contribute to engine issues during takeoff (ERA19FA249).
-- Improper diagnosis of engine problems, leading to erroneous actions such as shutting down the wrong engine, as seen in a multi-engine scenario (ERA17MA316).
+- The pilot was non-instrument rated (Context 1)
+- Decision to depart into instrument meteorological conditions (Context 1)
+- Spatial disorientation occurred (Context 1)
+- Loss of control due to spatial disorientation (Context 1)
 
 **Aircraft/Mechanical Factors:**
-- Fuel vapor formation in fuel lines, especially in high ambient temperatures, which can lead to starting difficulties and potential power loss if not mitigated by procedures like using auxiliary fuel pumps (ERA19FA249).
-- Bearing failure in turbine engines, which can cause confusing cockpit indications and eventual loss of engine power (ERA17MA316).
-- Detonation due to operational issues such as using lower-grade fuel, high manifold pressure with low RPM, or excessively lean mixtures at high power settings, leading to engine overheating, roughness, or power loss (ERA23FA188).
+- No mechanical issues mentioned in provided contexts
 
 **Environmental Factors:**
-- High ambient temperatures (e.g., 30°C/86°F), which increase the risk of fuel vaporization in fuel lines, particularly during engine start and takeoff phases (ERA19FA249).
-- Hot day/high altitude conditions that are conducive to fuel vapor formation, as specified in procedures for mitigating vapor lock (ERA19FA249).
+- Instrument meteorological conditions (IMC) present (Context 1)
+- Weather conditions conducive to spatial disorientation (Context 1)
+- Thunderstorm activity noted (Context 3)
+- Turbulence reported (Context 3)
 
 **Organizational Factors:**
-- Inadequate maintenance procedures, such as oil test evaluations that lack trend monitoring for contaminant levels (e.g., iron concentrations), which could prevent early detection of impending mechanical failures like bearing issues (ERA17MA316).
+- No organizational factors mentioned in provided contexts
 
-These causes are derived directly from the contexts provided. Note that the context for ERA19FA249 indicates that the investigation was unable to determine the exact reason for the loss of engine power in that specific accident, but the factors above were identified as relevant risks or contributing elements.",5,0.7124340464,0.689126968,0.734178603,3,0.944,0.938
-What are common causes of engine failure during takeoff?,recursive,semantic,"After reviewing the provided NTSB accident reports, I can identify several common causes of engine failure during takeoff based on the specific contexts:
+**Conclusion:** The accident was primarily caused by the non-instrument rated pilot's decision to fly into instrument meteorological conditions, resulting in spatial disorientation and loss of aircraft control [NTSB: CEN17FA361].
 
-**1. Fuel Management Issues:**
-- Failure to sample fuel from sump drains after refueling, which could detect water or contaminants (ERA19FA249)
-- Suspected fuel vapor formation in fuel lines, especially in hot conditions or high altitudes (ERA19FA249)
+**Evidence:**
+- ""Probable Cause: The noninstrument rated pilot's decision to depart into instrument meteorological conditions"" [NTSB: CEN17FA361]
+- ""subsequent loss of control due to spatial disorientation"" [NTSB: CEN17FA361]
+- ""Weather conditions conducive to spatial disorientation"" [NTSB: CEN17FA361]
+- ""Instrument meteorological conditions (IMC) present"" [NTSB: CEN17FA361]",3,0.7488823133333332,0.737422049,0.758461952,3,1.0,0.0
+Cessna accidents in instrument meteorological conditions,semantic,semantic,"- Evidence:
+     - The non-instrument-rated pilot in CEN17FA361 departed into IMC, experienced spatial disorientation, and lost control [NTSB: CEN17FA361].
+     - The pilot in WPR17FA066, though instrument-rated, was likely not instrument current and unfamiliar with basic IFR procedures; he lost control after entering IMC, resulting in an aerodynamic stall [NTSB: WPR17FA066].
+     - In CEN17FA361, the pilot was aware of the IMC conditions before departure but chose to fly without an instrument rating [NTSB: CEN17FA361].
+     - In WPR17FA066, the pilot faced personal pressure from passengers to complete the flight despite IFR weather conditions, contributing to poor decision-making [NTSB: WPR17FA066].
+     - Both accidents occurred shortly after takeoff when the aircraft entered clouds and encountered IMC [NTSB: CEN17FA361, NTSB: WPR17FA066].
+     - No preimpact mechanical malfunctions were found in WPR17FA066, and the engines were producing power at impact [NTSB: WPR17FA066].
+     - In CEN17FA361, GPS data indicated maneuvering and altitude changes consistent with spatial disorientation in IMC [NTSB: CEN17FA361].
+     - The airplane in WPR17FA066 was loaded over its maximum gross takeoff weight and outside CG limits, though the exact contribution to the stall is unclear [NTSB: WPR17FA066].
 
-**2. Engine Starting Problems:**
-- Difficulty starting engines, particularly when engines are hot after previous operation (ERA19FA249 mentions unsuccessful start attempts over 30 seconds)
+- Answer:
+     - Both Cessna accidents in instrument meteorological conditions (IMC) involved loss of control shortly after takeoff due to pilot factors, primarily inadequate instrument flying skills or currency. In CEN17FA361, the non-instrument-rated pilot entered IMC and likely experienced spatial disorientation. In WPR17FA066, the instrument-rated pilot was likely not current and succumbed to personal pressure, leading to an aerodynamic stall. Environmental factors (low ceilings, IMC) were present in both cases, and organizational factors (e.g., lack of instrument training or currency) contributed indirectly. No mechanical failures were identified as causal in the provided context.",3,0.7373168073333334,0.728078902,0.749461234,2,1.0,0.778
+Cessna accidents in instrument meteorological conditions,parent,semantic,"- Evidence:
+     - Accident ANC17FA039 occurred when the pilot encountered IMC while operating under VFR, leading to loss of visual reference and controlled flight into terrain [NTSB: ANC17FA039].
+     - Accident WPR17FA045 involved a non-instrument-rated pilot who proceeded with a VFR flight despite forecasts of IMC and mountain obscuration, resulting in a VFR encounter with IMC [NTSB: WPR17FA045].
+     - Accident ERA16FA100 occurred during an IFR flight when weather deteriorated to IMC with low ceilings, reduced visibility, and fog as forecasted, contributing to loss of control [NTSB: ERA16FA100].
 
-**3. Detonation Conditions:**
-- Use of lower fuel grade than specified by manufacturer
-- Operation with extremely high manifold pressures combined with low RPM
-- Operation with excessively lean mixture at high power settings
-- Extended ground operations or steep climbs reducing cylinder cooling (ERA23FA188)
+- Answer:
+     Cessna accidents in instrument meteorological conditions (IMC) often involve pilots operating under visual flight rules (VFR) who encounter IMC unexpectedly or proceed despite forecasts, leading to loss of visual reference, controlled flight into terrain, or loss of control. In some cases, even instrument-rated pilots face challenges when weather deteriorates as forecasted during IFR flights.",3,0.7522408366666666,0.748644888,0.755095482,3,0.941,0.911
+What are common causes of engine failure during takeoff?,fixed,hybrid,"- Evidence:
+     - Pilot failure to maintain airplane control following a reduction of thrust in one engine during takeoff, with the reason for thrust reduction undetermined [NTSB: CEN19MA190].
+     - Fuel starvation due to pilot failure to turn on fuel transfer pump switches during takeoff, leading to total loss of engine power [NTSB: CEN17FA252].
+     - Pilot's improper decision to activate annunciator panel dimming function during dusk, preventing visibility of caution lights for low fuel and pump status [NTSB: CEN17FA252].
+     - Pilot's failure to conduct manufacturer’s emergency procedure following loss of power in one engine and to follow checklists during all phases of operation [NTSB: CEN19MA190].
 
-**4. Mechanical Failures:**
-- Piston failure due to manufacturing defects or ring insert disbonding (CEN18FA053)
+- Answer:
+Based solely on the provided context, common causes of engine failure during takeoff include:
+- Undetermined reduction of thrust (mechanical or other origin not specified) [NTSB: CEN19MA190].
+- Fuel starvation due to pilot error in failing to activate fuel transfer pumps [NTSB: CEN17FA252].
+- Human factors such as checklist non-compliance, poor decision-making (e.g., dimming annunciator panels), and improper emergency response [NTSB: CEN19MA190, CEN17FA252].
 
-**5. Operational Factors:**
-- Failure to follow prescribed procedures such as:
-  - Using auxiliary fuel pumps to prevent vapor lock
-  - Performing engine run-ups to verify proper RPM before takeoff
-  - Monitoring engine instruments during critical phases (ERA23FA188, ERA19FA249)
+No evidence is provided for environmental or organizational factors in these contexts. The exact mechanical reasons for thrust reduction in one case remain unspecified.",3,1.5269993543624878,1.1253303289413452,1.9934287071228027,3,1.0,0.892
+What are common causes of engine failure during takeoff?,recursive,hybrid,"- Evidence:
+     - Detonation, an uncontrolled explosive ignition within the cylinder's combustion chamber, can cause engine overheating, roughness, or loss of power [NTSB: ERA23FA188].
+     - A reduction in thrust in one engine during takeoff occurred, though the specific reason could not be determined [NTSB: CEN19MA190].
+     - Malfunctioning engine propeller control and subsequent loss of engine power on both engines for undetermined reasons occurred [NTSB: ERA19LA096].
+     - Failure to follow emergency procedures or checklists after a loss of power can contribute to accidents [NTSB: CEN19MA190].
+     - Decision to continue flight with a known mechanical issue rather than diverting contributed to an accident [NTSB: ERA19LA096].
 
-These causes are derived from specific NTSB investigations:
-- ERA23FA188 (2023-04-11) regarding detonation
-- ERA19FA249 (2019-08-17) regarding fuel vapor and starting issues
-- CEN18FA053 (2017-12-16) regarding mechanical piston failure
+- Answer:
+Common causes of engine failure during takeoff, based solely on the provided context, include mechanical issues such as detonation leading to power loss [NTSB: ERA23FA188], undetermined thrust reductions [NTSB: CEN19MA190], and malfunctions like propeller control failures [NTSB: ERA19LA096]. Human factors, such as failure to execute emergency procedures or checklists [NTSB: CEN19MA190] and poor decision-making (e.g., continuing flight with known issues) [NTSB: ERA19LA096], also contribute significantly. The exact mechanical cause often remains undetermined due to evidence limitations like fire damage or unrecovered wreckage [NTSB: CEN19MA190, ERA19LA096].",3,1.985954721768697,1.1145329475402832,3.049954414367676,3,1.0,0.895
+What are common causes of engine failure during takeoff?,semantic,hybrid,"Insufficient context. The provided excerpts do not contain specific information about common causes of engine failure during takeoff. While detonation is mentioned as a potential cause of engine damage, the context lacks comprehensive data on common failure modes across different aircraft types and operational phases.",3,0.928991528848807,-0.03140052407979965,1.6388258934020996,3,1.0,0.957
+What are common causes of engine failure during takeoff?,parent,hybrid,"Insufficient context. The provided excerpts discuss detonation in piston engines, autorotation procedures in helicopters, and fuel mismanagement leading to engine failure, but none specifically address common causes of engine failure during takeoff.",3,3.901985247929891,3.242802858352661,4.756160259246826,3,1.0,0.956
+Cessna accidents in instrument meteorological conditions,fixed,hybrid,"- Evidence:
+     - In Accident CEN18FA061, the pilot experienced spatial disorientation after entering instrument meteorological conditions (IMC), leading to loss of control and descent into terrain [NTSB: CEN18FA061].
+     - In Accident WPR17FA066, the pilot failed to maintain airplane control upon entering IMC, resulting in an aerodynamic stall [NTSB: WPR17FA066].
+     - In Accident CEN18FA216, the pilot became spatially disoriented during a missed approach in IMC, resulting in loss of control and impact with terrain [NTSB: CEN18FA216].
+     - Contributing factors included environmental conditions (fog, low visibility, below-VFR minima) and human factors (spatial disorientation, poor decision-making, personal pressure) [NTSB: CEN18FA061, NTSB: WPR17FA066, NTSB: CEN18FA216].
+     - Aircraft factors included exceeding weight/CG limits and failure to maintain airspeed in some cases [NTSB: CEN18FA061, NTSB: WPR17FA066].
 
-The contexts emphasize that proper fuel grade selection, mixture management, and adherence to manufacturer procedures are critical to prevent engine failures during takeoff.",5,0.7203068096,0.70879364,0.741577208,3,0.944,0.934
+- Answer:
+     Based on the provided NTSB reports, Cessna accidents in instrument meteorological conditions (IMC) commonly involve:
+     - Human factors: Spatial disorientation and loss of aircraft control by the pilot, sometimes compounded by poor decision-making (e.g., attempting approaches below minimums) or personal pressure to complete flights [NTSB: CEN18FA061, NTSB: WPR17FA066, NTSB: CEN18FA216].
+     - Environmental factors: Adverse weather conditions (fog, low visibility, IMC) that reduce visual references and contribute to disorientation or control issues [NTSB: CEN18FA061, NTSB: WPR17FA066, NTSB: CEN18FA216].
+     - Aircraft/mechanical factors: Exceeding weight/CG capabilities or failure to maintain airspeed, which may exacerbate loss of control in IMC [NTSB: CEN18FA061, NTSB: WPR17FA066].
+     - Organizational factors: Insufficient context (no explicit organizational factors cited in the provided excerpts).",3,7.249686400095622,6.7324724197387695,7.91498327255249,3,1.0,0.85
+Cessna accidents in instrument meteorological conditions,recursive,hybrid,"- Evidence:
+     - Accident CEN19FA036 (Cessna 525) occurred in instrument meteorological conditions (IMC), with cloud coverage between about 1,200 ft to 10,000 ft msl and conditions conducive for light to moderate turbulence [NTSB: CEN19FA036].
+     - Accident CEN19FA094 (Cessna T337) occurred in instrument meteorological conditions (IMC), with scattered clouds at 2,600 ft AGL, broken ceiling at 3,200 ft AGL, and light thunderstorm rain [NTSB: CEN19FA094].
+     - Accident CEN17FA361 (Cessna TR182) occurred in instrument meteorological conditions (IMC), with no flight plan filed for the personal flight [NTSB: CEN17FA361]. The pilot had previously flown in similar conditions, descending through clouds on approach [NTSB: CEN17FA361].
+
+- Answer:
+     Based solely on the provided context, three Cessna accidents occurred in instrument meteorological conditions (IMC). These accidents involved a Cessna 525, a Cessna T337, and a Cessna TR182, all of which encountered IMC with varying cloud layers, turbulence, and precipitation. No specific causal factors (e.g., human, mechanical, environmental, or organizational) are detailed in the excerpts beyond the environmental condition of IMC. Insufficient context is provided to analyze other aspects.",3,6.8374050458272295,6.715569496154785,7.019908428192139,3,1.0,0.905
+Cessna accidents in instrument meteorological conditions,semantic,hybrid,"Of course. Here is the analysis of Cessna accidents in instrument meteorological conditions based solely on the provided NTSB report excerpts.
+
+### Evidence:
+-   **Human Factors:** In accident ERA19FA113, the pilot experienced spatial disorientation after entering instrument meteorological conditions (IMC) at night, which resulted in a loss of control [NTSB: ERA19FA113]. In accident CEN18FA061, the pilot also likely experienced spatial disorientation after entering IMC, resulting in a loss of control [NTSB: CEN18FA061].
+-   **Environmental Factors:** Accident ERA19FA113 occurred in night instrument meteorological conditions [NTSB: ERA19FA113]. Accident CEN18FA061 occurred during takeoff in dense fog, which limited visibility to approximately 400-800 feet [NTSB: CEN18FA061]. Accident CEN17FA361 occurred in IMC with an overcast ceiling at 400 ft AGL [NTSB: CEN17FA361].
+-   **Aircraft/Mechanical Factors:** For accident ERA19FA113, a post-accident examination revealed no preimpact mechanical anomalies that would have precluded normal operation [NTSB: ERA19FA113]. The investigation for accident CEN18FA061 was unable to determine the status of the autopilot during takeoff [NTSB: CEN18FA061].
+-   **Organizational Factors:** In accident ERA19FA113, the pilot obtained a weather briefing indicating IFR conditions with severe turbulence along the route, yet still chose to depart [NTSB: ERA19FA113]. The investigation for accident CEN17FA361 found no evidence the pilot obtained an official preflight weather briefing [NTSB: CEN17FA361].
+
+### Answer:
+Based on the provided accident reports, a common factor in these Cessna accidents was flight into instrument meteorological conditions (IMC). The primary causal factor identified was the pilot's subsequent **spatial disorientation**, which led to a loss of control. This was often compounded by environmental factors such as low ceilings, fog, and night conditions. Examinations found no evidence of pre-existing mechanical failures, pointing to human factors as the principal cause in these specific events.",3,6.206709067026774,6.038910865783691,6.517010688781738,3,1.0,0.785
+Cessna accidents in instrument meteorological conditions,parent,hybrid,What is the difference between a pilot and a pilot? The pilot is the pilot.,3,7.281912803649902,7.093992710113525,7.530303955078125,3,1.0,0.805

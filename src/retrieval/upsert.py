@@ -11,7 +11,7 @@ from pinecone import Pinecone, ServerlessSpec
 INDEX_NAME = "ntsb-rag"
 DIMENSION = 768
 BATCH_SIZE = 100
-STRATEGIES = ["fixed", "recursive", "semantic"]
+STRATEGIES = ["fixed", "recursive", "semantic", "parent"]
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -97,6 +97,11 @@ def main():
     index = init_pinecone()
 
     for strategy in STRATEGIES:
+        if not os.path.exists(CHUNK_FILES[strategy]) or not os.path.exists(EMBEDDING_FILES[strategy]):
+            print(f"\n--- {strategy} ---")
+            print("  Skipping: chunk or embedding artifact not found")
+            continue
+
         print(f"\n--- {strategy} ---")
         chunk_ids, embeddings, chunks_dict = load_data(strategy)
         print(f"  Loaded {len(chunk_ids)} chunks, embeddings shape {embeddings.shape}")
