@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
-    expand_query_variants, generate_hyde_document,
+    expand_query_variants, generate_multi_queries,
     bm25_retrieve, rrf_fuse_lists, rerank, enrich_with_neighbors,
 )
 from src.generation.generate import generate_answer
@@ -101,7 +101,7 @@ with st.sidebar:
     top_k = st.slider("Number of chunks to retrieve", 3, 50, 10)
 
     run_eval = st.checkbox("Compute faithfulness & relevancy scores", value=True)
-    use_hyde = st.checkbox("Use HyDE query expansion (slower, often better recall)", value=False)
+    use_multi_query = st.checkbox("Use Multi-Query expansion (slower, better recall for specific questions)", value=False)
 
     st.divider()
     st.markdown("**Model info**")
@@ -130,7 +130,7 @@ if query:
     is_hybrid = "Hybrid" in mode
 
     # Retrieve
-    hyde_doc = None
+    multi_query_variants = None
     if is_hybrid:
         reranker = get_reranker()
         bm25, chunks = get_bm25(strategy)
@@ -139,13 +139,13 @@ if query:
         with st.spinner("Step 1/5 — Expanding query variants..."):
             queries = expand_query_variants(query)
 
-        # Step 2: HyDE (optional, slow — DeepSeek API call)
-        if use_hyde:
-            hyde_label = "GPT" if llm_provider == "gpt" else "DeepSeek"
-            with st.spinner(f"Step 2/5 — Generating HyDE document ({hyde_label})..."):
-                hyde_doc = generate_hyde_document(query, model=llm_provider)
-                if hyde_doc:
-                    queries.append(hyde_doc)
+        # Step 2: Multi-Query expansion (optional, slow — LLM API call)
+        if use_multi_query:
+            mq_label = "GPT" if llm_provider == "gpt" else "DeepSeek"
+            with st.spinner(f"Step 2/5 — Generating multi-query variants ({mq_label})..."):
+                multi_query_variants = generate_multi_queries(query, model=llm_provider)
+                if multi_query_variants:
+                    queries.extend(multi_query_variants)
 
         # Step 3: Semantic + BM25 retrieval for each query variant
         ranked_lists = []
@@ -183,10 +183,11 @@ if query:
             ollama_model=ollama_model,
         )
 
-    # HyDE document (if generated)
-    if hyde_doc:
-        with st.expander("HyDE — Hypothetical document used for retrieval"):
-            st.markdown(hyde_doc)
+    # Multi-Query variants (if generated)
+    if multi_query_variants:
+        with st.expander("Multi-Query — Alternative questions used for retrieval"):
+            for i, q in enumerate(multi_query_variants, 1):
+                st.markdown(f"{i}. {q}")
 
     # Display answer
     st.subheader("Answer")

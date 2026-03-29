@@ -181,19 +181,49 @@ def expand_query_variants(query):
     return deduped[:3]
 
 
-def generate_hyde_document(query, model=None):
-    """Generate a short hypothetical answer-like document for HyDE retrieval."""
-    prompt = f"""Write a concise technical paragraph that would likely answer this aviation safety question.
-Do not include meta commentary.
+def generate_multi_queries(query, model=None):
+    """Generate alternative query phrasings for multi-query retrieval.
 
-Question:
-{query}
+    Returns a list of question strings. Each rephrasing targets a different
+    angle from which NTSB reports describe the same information (probable cause,
+    crew qualifications, ATC communications, aircraft systems, weather, CVR/FDR
+    data, safety recommendations, etc.).
+    """
+    prompt = f"""You are an expert in NTSB (National Transportation Safety Board) aviation accident reports.
+
+Your task is to generate five alternative phrasings of the question below.
+Each rephrasing should approach the same information need from a different angle,
+using vocabulary and framing consistent with NTSB accident reports.
+
+NTSB reports are organized around these areas — use them to diversify your phrasings:
+- Probable cause and contributing factors
+- Flight crew qualifications, experience, and decision-making
+- Aircraft systems, maintenance records, and airworthiness
+- Air traffic control communications and instructions
+- Cockpit Voice Recorder (CVR) and Flight Data Recorder (FDR) findings
+- Meteorological conditions and weather data
+- Safety recommendations and corrective actions
+
+Rules:
+- Return exactly five questions, one per line, no numbering or bullet points.
+- Do NOT invent specific numbers, names, or dates.
+- Do NOT answer the question — only rephrase it.
+- Keep each question concise (one sentence).
+- CRITICAL: Preserve every specific entity from the original question exactly as written —
+  this includes directional terms (left/right), component names, crew roles (captain/first officer/PF/PM),
+  aircraft identifiers, flight numbers, and any other named element. Never substitute, swap, or generalize them.
+
+Original question: {query}
 """
     try:
         from src.llm.client import call_llm, MODEL_GPT
-        return call_llm(prompt, model=MODEL_GPT if model == "gpt" else None)
+        raw = call_llm(prompt, model=MODEL_GPT if model == "gpt" else None)
+        if not raw:
+            return []
+        variants = [line.strip() for line in raw.splitlines() if line.strip()]
+        return variants[:5]
     except Exception:
-        return ""
+        return []
 
 
 def _chunk_maps(chunks):
@@ -269,10 +299,10 @@ def hybrid_retrieve(query, strategy, top_k=6, model=None, index=None,
     debug["query_variants"] = list(queries)
 
     if use_hyde:
-        hyde_doc = generate_hyde_document(query)
-        if hyde_doc:
-            queries.append(hyde_doc)
-            debug["hyde_doc"] = hyde_doc
+        multi_queries = generate_multi_queries(query)
+        if multi_queries:
+            queries.extend(multi_queries)
+            debug["hyde_doc"] = multi_queries  # key kept for backward compat
 
     ranked_lists = []
     for q in queries:
