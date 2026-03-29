@@ -7,7 +7,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from src.llm.client import call_llm
+from src.llm.client import call_llm, MODEL_GPT
 from src.llm.ollama_client import call_ollama
 from src.retrieval.query import load_model, init_pinecone, retrieve
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
@@ -84,6 +84,8 @@ def generate_answer(query, retrieved_chunks, llm_provider="deepseek", ollama_mod
             max_tokens=2048,
             timeout=240,
         )
+    if provider == "gpt":
+        return call_llm(user_prompt, system=system, model=MODEL_GPT)
     return call_llm(user_prompt, system=system)
 
 

@@ -13,7 +13,11 @@ import streamlit as st
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
-from src.retrieval.hybrid import build_bm25_index, load_reranker, hybrid_retrieve
+from src.retrieval.hybrid import (
+    build_bm25_index, load_reranker, hybrid_retrieve,
+    expand_query_variants, generate_hyde_document,
+    bm25_retrieve, rrf_fuse_lists, rerank, enrich_with_neighbors,
+)
 from src.generation.generate import generate_answer
 from src.evaluation.evaluate import compute_faithfulness, compute_relevancy
 
@@ -53,11 +57,16 @@ with st.sidebar:
 
     llm_provider_label = st.selectbox(
         "Generator",
-        ["Ollama (Local)", "DeepSeek (NVIDIA API)"],
-        index=0,
+        ["Ollama (Local)", "DeepSeek (NVIDIA API)", "GPT (NVIDIA API)"],
+        index=1,
         help="Choose which LLM generates the final answer from retrieved chunks.",
     )
-    llm_provider = "ollama" if "Ollama" in llm_provider_label else "deepseek"
+    if "Ollama" in llm_provider_label:
+        llm_provider = "ollama"
+    elif "GPT" in llm_provider_label:
+        llm_provider = "gpt"
+    else:
+        llm_provider = "deepseek"
     ollama_model = st.text_input(
         "Ollama Model",
         value="qwen2.5:32b",
@@ -89,7 +98,7 @@ with st.sidebar:
         index=1,
     )
 
-    top_k = st.slider("Number of chunks to retrieve", 3, 20, 5)
+    top_k = st.slider("Number of chunks to retrieve", 3, 50, 10)
 
     run_eval = st.checkbox("Compute faithfulness & relevancy scores", value=True)
     use_hyde = st.checkbox("Use HyDE query expansion (slower, often better recall)", value=False)
@@ -99,8 +108,10 @@ with st.sidebar:
     st.markdown("- Embeddings: Jina v5 (768-dim)")
     if llm_provider == "ollama":
         st.markdown(f"- Generator: {ollama_model} (Ollama local)")
+    elif llm_provider == "gpt":
+        st.markdown("- Generator: GPT-4o 120B (NVIDIA)")
     else:
-        st.markdown("- Generator: DeepSeek V3.2 (NVIDIA)")
+        st.markdown("- Generator: DeepSeek V3.1 (NVIDIA)")
     st.markdown("- Reranker: ms-marco-MiniLM-L-6-v2")
 
 
@@ -119,22 +130,40 @@ if query:
     is_hybrid = "Hybrid" in mode
 
     # Retrieve
-    with st.spinner("Retrieving relevant chunks..."):
-        if is_hybrid:
-            reranker = get_reranker()
-            bm25, chunks = get_bm25(strategy)
-            matches = hybrid_retrieve(
-                query,
-                strategy,
-                top_k=top_k,
-                model=jina_model,
-                index=index,
-                bm25=bm25,
-                chunks=chunks,
-                reranker=reranker,
-                use_hyde=use_hyde,
-            )
-        else:
+    hyde_doc = None
+    if is_hybrid:
+        reranker = get_reranker()
+        bm25, chunks = get_bm25(strategy)
+
+        # Step 1: Query expansion
+        with st.spinner("Step 1/5 — Expanding query variants..."):
+            queries = expand_query_variants(query)
+
+        # Step 2: HyDE (optional, slow — DeepSeek API call)
+        if use_hyde:
+            hyde_label = "GPT" if llm_provider == "gpt" else "DeepSeek"
+            with st.spinner(f"Step 2/5 — Generating HyDE document ({hyde_label})..."):
+                hyde_doc = generate_hyde_document(query, model=llm_provider)
+                if hyde_doc:
+                    queries.append(hyde_doc)
+
+        # Step 3: Semantic + BM25 retrieval for each query variant
+        ranked_lists = []
+        for i, q in enumerate(queries, 1):
+            with st.spinner(f"Step 3/5 — Searching (variant {i}/{len(queries)})..."):
+                ranked_lists.append(retrieve(q, strategy, top_k=40, model=jina_model, index=index))
+                ranked_lists.append(bm25_retrieve(q, bm25, chunks, top_k=40))
+
+        # Step 4: RRF fusion + cross-encoder rerank
+        with st.spinner("Step 4/5 — Fusing & reranking candidates..."):
+            fused = rrf_fuse_lists(ranked_lists)
+            matches = rerank(query, fused, reranker, top_k=top_k, min_unique_reports=3)
+
+        # Step 5: Neighbor enrichment
+        with st.spinner("Step 5/5 — Enriching with neighboring chunks..."):
+            matches = enrich_with_neighbors(matches, chunks, window=1)
+    else:
+        with st.spinner("Retrieving relevant chunks..."):
             matches = retrieve(query, strategy, top_k=top_k, model=jina_model, index=index)
 
     # Extract context texts
@@ -153,6 +182,11 @@ if query:
             llm_provider=llm_provider,
             ollama_model=ollama_model,
         )
+
+    # HyDE document (if generated)
+    if hyde_doc:
+        with st.expander("HyDE — Hypothetical document used for retrieval"):
+            st.markdown(hyde_doc)
 
     # Display answer
     st.subheader("Answer")
@@ -185,7 +219,7 @@ if query:
                         st.markdown(f"- {alt}")
 
     # Retrieved context
-    st.subheader("Retrieved Context")
+    st.subheader(f"Retrieved Chunks ({len(matches)})")
     for i, m in enumerate(matches, 1):
         if hasattr(m, "metadata"):
             meta = m.metadata
@@ -194,14 +228,23 @@ if query:
             meta = m
             score = m.get("score", 0)
 
-        with st.expander(
-            f"[{i}] NTSB {meta.get('ntsb_no', 'N/A')} - "
-            f"{meta.get('make', '')} {meta.get('model', '')} | "
-            f"Score: {score:.4f}"
-        ):
-            st.markdown(f"**Date:** {meta.get('event_date', 'N/A')}")
-            st.markdown(
-                f"**Phase:** {meta.get('phase_of_flight', 'N/A')} | "
-                f"**Weather:** {meta.get('weather', 'N/A')}"
-            )
-            st.text(meta.get("text", "")[:1000])
+        report_id = meta.get("ntsb_no") or meta.get("report_id", "N/A")
+        section = meta.get("section_title", "")
+        label = f"[{i}] {report_id}"
+        if section:
+            label += f" — {section}"
+        label += f" | Score: {score:.4f}"
+
+        with st.expander(label):
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown(f"**Report:** {report_id}")
+                st.markdown(f"**Date:** {meta.get('event_date', 'N/A')}")
+            with col2:
+                st.markdown(f"**Section:** {section or 'N/A'}")
+                st.markdown(
+                    f"**Phase:** {meta.get('phase_of_flight', 'N/A')} | "
+                    f"**Weather:** {meta.get('weather', 'N/A')}"
+                )
+            st.divider()
+            st.text(meta.get("text", ""))

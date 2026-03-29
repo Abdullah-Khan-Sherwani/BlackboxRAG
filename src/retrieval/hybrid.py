@@ -181,7 +181,7 @@ def expand_query_variants(query):
     return deduped[:3]
 
 
-def generate_hyde_document(query):
+def generate_hyde_document(query, model=None):
     """Generate a short hypothetical answer-like document for HyDE retrieval."""
     prompt = f"""Write a concise technical paragraph that would likely answer this aviation safety question.
 Do not include meta commentary.
@@ -190,7 +190,8 @@ Question:
 {query}
 """
     try:
-        return call_eval_llm(prompt)
+        from src.llm.client import call_llm, MODEL_GPT
+        return call_llm(prompt, model=MODEL_GPT if model == "gpt" else None)
     except Exception:
         return ""
 
@@ -199,13 +200,13 @@ def _chunk_maps(chunks):
     """Build quick lookup maps for neighbor context enrichment."""
     by_doc = {}
     for c in chunks:
-        ntsb = c.get("ntsb_no", "")
-        if ntsb:
-            by_doc.setdefault(ntsb, []).append(c)
+        key = c.get("ntsb_no") or c.get("report_id", "")
+        if key:
+            by_doc.setdefault(key, []).append(c)
 
-    for ntsb, doc_chunks in by_doc.items():
+    for key, doc_chunks in by_doc.items():
         doc_chunks.sort(key=lambda x: x.get("chunk_id", ""))
-        by_doc[ntsb] = doc_chunks
+        by_doc[key] = doc_chunks
 
     return by_doc
 
@@ -220,7 +221,7 @@ def enrich_with_neighbors(results, chunks, window=1):
 
     for r in results:
         cid = r.get("chunk_id", "")
-        ntsb = r.get("ntsb_no", "")
+        ntsb = r.get("ntsb_no") or r.get("report_id", "")
         if not cid or not ntsb or ntsb not in by_doc:
             enriched.append(r)
             continue
@@ -253,17 +254,25 @@ def hybrid_retrieve(query, strategy, top_k=6, model=None, index=None,
                     enable_query_expansion=True,
                     neighbor_window=1,
                     use_hyde=False,
-                    min_unique_reports=3):
+                    min_unique_reports=3,
+                    return_debug=False):
     """Full hybrid retrieval pipeline: semantic + BM25 → RRF → rerank.
 
     Returns list[dict] with keys: text, ntsb_no, event_date, make, model, score, etc.
+    If return_debug=True, returns (results, debug_info) where debug_info contains
+    hyde_doc and query_variants.
     """
+    debug = {"hyde_doc": None, "query_variants": []}
+
     # Query expansion + fusion retrieval
     queries = expand_query_variants(query) if enable_query_expansion else [query]
+    debug["query_variants"] = list(queries)
+
     if use_hyde:
         hyde_doc = generate_hyde_document(query)
         if hyde_doc:
             queries.append(hyde_doc)
+            debug["hyde_doc"] = hyde_doc
 
     ranked_lists = []
     for q in queries:
@@ -278,6 +287,9 @@ def hybrid_retrieve(query, strategy, top_k=6, model=None, index=None,
     # Rerank
     results = rerank(query, fused, reranker, top_k=top_k, min_unique_reports=min_unique_reports)
     results = enrich_with_neighbors(results, chunks, window=neighbor_window)
+
+    if return_debug:
+        return results, debug
     return results
 
 

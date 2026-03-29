@@ -26,7 +26,8 @@ except ImportError:  # Allow Ollama-only runs without OpenAI package installed.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-MODEL = "deepseek-ai/deepseek-v3.1"
+MODEL_DEEPSEEK = "deepseek-ai/deepseek-v3.1"
+MODEL_GPT = "openai/gpt-oss-120b"
 BASE_URL = "https://integrate.api.nvidia.com/v1"
 HF_EVAL_MODEL = "mistralai/Mistral-7B-Instruct-v0.3"
 
@@ -71,12 +72,13 @@ def _get_hf_client() -> InferenceClient:
     stop=stop_after_attempt(3),
     reraise=True,
 )
-def call_llm(prompt: str, system: str | None = None) -> str:
-    """Send a prompt to the LLM and return the response text.
+def call_llm(prompt: str, system: str | None = None, model: str | None = None) -> str:
+    """Send a prompt to an NVIDIA-hosted model and return the response text.
 
     Args:
         prompt: The user message / main prompt content.
         system: Optional system message for role-setting.
+        model: Model ID to use. Defaults to DeepSeek v3.1.
 
     Returns:
         The model's response as a string.
@@ -87,7 +89,7 @@ def call_llm(prompt: str, system: str | None = None) -> str:
     messages.append({"role": "user", "content": prompt})
 
     response = _get_client().chat.completions.create(
-        model=MODEL,
+        model=model or MODEL_DEEPSEEK,
         messages=messages,
         temperature=0.2,
     )
@@ -116,4 +118,4 @@ def call_eval_llm(prompt: str, system: str | None = None) -> str:
         return out.strip()
 
     # Default to NVIDIA path for eval too.
-    return call_llm(prompt, system=system)
+    return call_llm(prompt, system=system, model=MODEL_DEEPSEEK)
