@@ -129,6 +129,61 @@ def _soft_report_budget(ranked, top_k, dominant_report, keep_ratio=0.8):
     return selected[:top_k]
 
 
+def _entity_id(item: dict) -> str:
+    """Return canonical entity identifier used for dynamic weighting."""
+    return str(item.get("entity_id") or item.get("ntsb_no") or item.get("report_id") or "").strip()
+
+
+def _dominant_entity_stats(candidates: list[dict], top_n: int = 10) -> tuple[str, float]:
+    """Compute dominant entity and share in top-n candidates."""
+    if not candidates:
+        return "", 0.0
+
+    ranked = sorted(candidates, key=lambda x: x.get("score", 0.0), reverse=True)
+    probe = ranked[:top_n]
+    counts: dict[str, int] = {}
+    for item in probe:
+        eid = _entity_id(item)
+        if not eid:
+            continue
+        counts[eid] = counts.get(eid, 0) + 1
+
+    if not counts:
+        return "", 0.0
+
+    dominant = max(counts, key=counts.get)
+    ratio = counts[dominant] / max(len(probe), 1)
+    return dominant, ratio
+
+
+def apply_dynamic_entity_weighting(
+    candidates: list[dict],
+    top_n: int = 10,
+    threshold: float = 0.8,
+    boost: float = 0.18,
+) -> tuple[list[dict], dict]:
+    """Apply explicit 80/20 weighting: if top-n is 80% one entity, boost it in remaining pool."""
+    dominant_entity, ratio = _dominant_entity_stats(candidates, top_n=top_n)
+    debug = {
+        "dominant_entity": dominant_entity,
+        "dominant_ratio": ratio,
+        "weighting_applied": False,
+    }
+    if not dominant_entity or ratio < threshold:
+        return candidates, debug
+
+    ranked = sorted(candidates, key=lambda x: x.get("score", 0.0), reverse=True)
+    head = ranked[:top_n]
+    tail = ranked[top_n:]
+    for item in tail:
+        if _entity_id(item) == dominant_entity:
+            item["score"] = float(item.get("score", 0.0)) + boost
+
+    boosted = sorted(head + tail, key=lambda x: x.get("score", 0.0), reverse=True)
+    debug["weighting_applied"] = True
+    return boosted, debug
+
+
 def rerank(query, candidates, reranker, top_k=6, min_unique_reports=3):
     """Rerank candidates using a cross-encoder and return top-k.
 
@@ -388,7 +443,15 @@ def hybrid_retrieve(query, strategy, top_k=6, model=None, index=None,
     Returns list[dict] with keys: text, ntsb_no, event_date, make, model, score, etc.
     If return_debug=True, returns (results, debug_info).
     """
-    debug = {"multi_queries": None, "query_variants": []}
+    debug = {
+        "multi_queries": None,
+        "query_variants": [],
+        "dynamic_weighting": {
+            "dominant_entity": "",
+            "dominant_ratio": 0.0,
+            "weighting_applied": False,
+        },
+    }
 
     # Query expansion + fusion retrieval
     queries = expand_query_variants(query) if enable_query_expansion else [query]
@@ -409,6 +472,8 @@ def hybrid_retrieve(query, strategy, top_k=6, model=None, index=None,
 
     # Fuse all ranked lists (semantic + lexical over expanded queries)
     fused = rrf_fuse_lists(ranked_lists)
+    fused, dyn_dbg = apply_dynamic_entity_weighting(fused, top_n=10, threshold=0.8, boost=0.18)
+    debug["dynamic_weighting"] = dyn_dbg
 
     # Rerank
     results = rerank(query, fused, reranker, top_k=top_k, min_unique_reports=min_unique_reports)

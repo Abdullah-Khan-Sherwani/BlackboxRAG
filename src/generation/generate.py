@@ -10,7 +10,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 from src.llm.client import call_llm, MODEL_GPT
 from src.llm.ollama_client import call_ollama
-from src.retrieval.query import load_model, init_pinecone, retrieve
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
@@ -84,13 +83,26 @@ def build_prompt(query, retrieved_chunks):
     """
     context_blocks = []
     for i, chunk in enumerate(retrieved_chunks, 1):
+        flight = (
+            _get_meta(chunk, "entity_id", "")
+            or _get_meta(chunk, "ntsb_no", "")
+            or _get_meta(chunk, "report_id", "")
+            or "Unknown"
+        )
+        role = _get_meta(chunk, "role", "Unknown")
+        source_name = _get_meta(chunk, "source_filename", "")
+        section = _get_meta(chunk, "section_title", "")
+        context_summary = _get_meta(chunk, "context_summary", "")
         header = (
-            f"[Context {i}] NTSB No: {_get_meta(chunk, 'ntsb_no')} | "
-            f"Date: {_get_meta(chunk, 'event_date')} | "
-            f"Aircraft: {_get_meta(chunk, 'make')} {_get_meta(chunk, 'model')}"
+            f"Chunk {i} | Flight: {flight} | Role: {role}"
+            f" | Source: {source_name or 'N/A'}"
+            f" | Section: {section or 'N/A'}"
         )
         text = _get_meta(chunk, "text", "")
-        context_blocks.append(f"{header}\n{text}")
+        if context_summary:
+            context_blocks.append(f"{header}\nContext: {context_summary}\nData: {text}")
+        else:
+            context_blocks.append(f"{header}\nData: {text}")
 
     context_str = "\n\n".join(context_blocks)
 

@@ -3,6 +3,7 @@ Generate embeddings for chunk files.
 """
 import json
 import os
+import re
 
 import numpy as np
 import torch
@@ -46,6 +47,17 @@ def embed_chunks(chunks: list[dict], model=None) -> tuple[list[dict], np.ndarray
     if model is None:
         model = load_model()
 
+    for chunk in chunks:
+        if not chunk.get("contextualized_text"):
+            source = chunk.get("source_filename", "local_artifact")
+            entity_id = chunk.get("entity_id") or chunk.get("ntsb_no") or chunk.get("report_id", "")
+            context = chunk.get("context_summary") or _density_context(chunk.get("text", ""))
+            chunk["context_summary"] = context
+            chunk["contextualized_text"] = (
+                f"[Source: {source}] [Entity_ID: {entity_id}] [Context: {context}]\n"
+                f"{chunk.get('text', '')}"
+            )
+
     texts = [c.get("contextualized_text", c.get("text", "")) for c in chunks]
 
     all_embeddings = []
@@ -62,6 +74,24 @@ def embed_chunks(chunks: list[dict], model=None) -> tuple[list[dict], np.ndarray
 def save_embeddings(chunks: list[dict], embeddings: np.ndarray, out_path: str):
     chunk_ids = np.array([c["chunk_id"] for c in chunks])
     np.savez_compressed(out_path, chunk_ids=chunk_ids, embeddings=embeddings)
+
+
+def _density_context(text: str) -> str:
+    """Fallback density summary preserving identifiers and numbers."""
+    cleaned = re.sub(r"\s+", " ", text).strip()
+    if not cleaned:
+        return "No context available"
+
+    parts = re.split(r"(?<=[.!?])\s+", cleaned)
+    id_re = re.compile(r"\d|[A-Z]{2,}\d+|\b[A-Z]{2,}[\-/]\d+")
+    selected = [p.strip() for p in parts if id_re.search(p)]
+    if not selected:
+        selected = [p.strip() for p in parts[:2] if p.strip()]
+
+    merged = " ".join(selected)
+    density = len(id_re.findall(cleaned))
+    max_len = 240 if density < 6 else 420 if density < 14 else 620
+    return merged[:max_len].strip()
 
 
 def main():

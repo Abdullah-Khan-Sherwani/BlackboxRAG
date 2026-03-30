@@ -1,20 +1,23 @@
 """
-Migrate markdown-extracted NTSB reports into Pinecone.
+Migrate markdown-extracted reports into Pinecone with metadata-augmented embeddings.
 
 Pipeline:
 1. Load .md reports from dataset-pipeline/data/extracted/extracted
 2. Chunk each report (section-aware or recursive)
-3. Generate Jina retrieval embeddings
-4. Optionally reset (delete + recreate) the Pinecone index
-5. Upsert vectors in batches
+3. Build contextualized document text with provenance headers
+4. Generate document embeddings locally
+5. Optionally reset (delete + recreate) the Pinecone index
+6. Upsert vectors in batches
 
-This script intentionally rebuilds vectors from markdown sources rather than
-reusing previously generated CSV-based chunk artifacts.
+Notes:
+- Document embeddings are generated locally in this script.
+- Query embeddings are generated in-app at retrieval time (src/retrieval/query.py).
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -26,17 +29,33 @@ from dotenv import load_dotenv
 from pinecone import Pinecone, ServerlessSpec
 from transformers import AutoModel
 
-
 BASE_DIR = Path(__file__).resolve().parents[1]
 if str(BASE_DIR) not in sys.path:
     sys.path.insert(0, str(BASE_DIR))
+
+from src.llm.ollama_client import call_ollama  # noqa: E402
 
 MD_DIR = BASE_DIR / "dataset-pipeline" / "data" / "extracted" / "extracted"
 PROCESSED_DIR = BASE_DIR / "data" / "processed"
 
 DEFAULT_INDEX_NAME = "ntsb-rag"
 DEFAULT_MODEL_NAME = "jinaai/jina-embeddings-v5-text-nano"
+DEFAULT_SUMMARIZER_MODEL = "qwen2.5:32b"
 DEFAULT_BATCH_SIZE = 100
+
+ENTITY_DENSE_SUMMARY_PROMPT = """You are an expert technical editor. Your task is to create a high-density, entity-preserving summary of the provided text chunk.
+
+Rules:
+1. MANDATORY: Preserve all unique identifiers (e.g., Flight IDs, Case Numbers, Part IDs).
+2. PRECISION: Retain all numerical values, units, and technical parameters exactly as written.
+3. ENTITY INTEGRITY: Keep all proper names (people, organizations, locations) and specific roles intact.
+4. NO GENERALIZATION: Do not use vague terms like "various," "technical issues," or "several." If the text says "three engine valves," you must write "three engine valves."
+5. DYNAMIC LENGTH: Provide enough detail to cover all unique technical points in the chunk. Do not cut the summary short if the content is dense.
+6. OBJECTIVITY: Do not interpret, infer, or provide commentary. Only summarize explicit facts.
+
+Chunk:
+{chunk_text}
+"""
 
 
 def split_text_with_overlap(text: str, chunk_size: int = 1500, overlap: int = 200) -> list[str]:
@@ -65,6 +84,85 @@ def split_text_with_overlap(text: str, chunk_size: int = 1500, overlap: int = 20
         start = max(0, end - overlap)
 
     return chunks
+
+
+def infer_role(section_title: str, text: str) -> str:
+    """Infer a coarse role label used in chunk-level provenance formatting."""
+    label = f"{section_title} {text}".lower()
+    if "captain" in label:
+        return "Captain"
+    if "first officer" in label or "copilot" in label or "co-pilot" in label:
+        return "First Officer"
+    if "pilot" in label:
+        return "Pilot"
+    if "engine" in label or "maintenance" in label:
+        return "Maintenance/Engineering"
+    if "atc" in label or "air traffic" in label or "controller" in label:
+        return "ATC"
+    if section_title:
+        return section_title
+    return "Unknown"
+
+
+def _density_summary_fallback(chunk_text: str) -> str:
+    """Fast local fallback summary preserving high-information lines."""
+    cleaned = re.sub(r"\s+", " ", chunk_text).strip()
+    if not cleaned:
+        return "No context available"
+
+    sentences = re.split(r"(?<=[.!?])\s+", cleaned)
+    selected = []
+    numeric_or_id = re.compile(r"\d|[A-Z]{2,}\d+|\b[A-Z]{2,}[\-/]\d+")
+
+    for sent in sentences:
+        if numeric_or_id.search(sent):
+            selected.append(sent.strip())
+
+    if not selected:
+        selected = [s.strip() for s in sentences[:2] if s.strip()]
+
+    joined = " ".join(selected)
+
+    # Dynamic length by information density.
+    density_hits = len(numeric_or_id.findall(cleaned))
+    max_len = 260 if density_hits < 6 else 420 if density_hits < 14 else 620
+    return joined[:max_len].strip()
+
+
+def summarize_entity_dense(
+    chunk_text: str,
+    summarizer_model: str,
+    use_ollama_summary: bool,
+    summary_timeout: int,
+    summary_cache: dict[str, str],
+) -> str:
+    """Generate entity-dense summary with optional local Ollama model."""
+    key = hashlib.md5(chunk_text.encode("utf-8")).hexdigest()
+    if key in summary_cache:
+        return summary_cache[key]
+
+    if not use_ollama_summary:
+        out = _density_summary_fallback(chunk_text)
+        summary_cache[key] = out
+        return out
+
+    prompt = ENTITY_DENSE_SUMMARY_PROMPT.format(chunk_text=chunk_text)
+    try:
+        out = call_ollama(
+            prompt=prompt,
+            system_prompt="You are a strict technical summarizer.",
+            model=summarizer_model,
+            temperature=0.0,
+            max_tokens=600,
+            timeout=summary_timeout,
+        ).strip()
+        if not out:
+            out = _density_summary_fallback(chunk_text)
+    except Exception:
+        out = _density_summary_fallback(chunk_text)
+
+    summary_cache[key] = out
+    return out
 
 
 def chunk_markdown_section_aware_local(md_file_path: Path) -> list[dict]:
@@ -96,6 +194,9 @@ def chunk_markdown_section_aware_local(md_file_path: Path) -> list[dict]:
                     "chunk_id": f"{report_id}_sec{sec_idx:02d}_{chunk_idx:03d}",
                     "report_id": report_id,
                     "section_title": section["title"],
+                    "role": infer_role(section["title"], chunk_text),
+                    "source_filename": md_file_path.name,
+                    "entity_id": report_id,
                     "text": f"Section: {section['title']}\n{chunk_text}",
                 }
             )
@@ -114,6 +215,10 @@ def chunk_markdown_recursive_local(md_file_path: Path) -> list[dict]:
             {
                 "chunk_id": f"{report_id}_rec_{chunk_idx:03d}",
                 "report_id": report_id,
+                "section_title": "",
+                "role": infer_role("", chunk_text),
+                "source_filename": md_file_path.name,
+                "entity_id": report_id,
                 "text": chunk_text,
             }
         )
@@ -151,7 +256,71 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Delete existing index and recreate it before upload.",
     )
+    parser.add_argument(
+        "--use-ollama-summary",
+        action="store_true",
+        help=(
+            "Use local Ollama summarization (qwen2.5:32b by default) for entity-dense context summaries. "
+            "If disabled, a deterministic local density summary is used."
+        ),
+    )
+    parser.add_argument(
+        "--summarizer-model",
+        default=DEFAULT_SUMMARIZER_MODEL,
+        help="Local Ollama model used for entity-dense summaries.",
+    )
+    parser.add_argument(
+        "--summary-timeout",
+        type=int,
+        default=120,
+        help="Per-chunk timeout (seconds) for Ollama summarization.",
+    )
+    parser.add_argument(
+        "--ollama-summary-max-chunks",
+        type=int,
+        default=0,
+        help=(
+            "Maximum number of chunks to summarize with Ollama before switching to deterministic fallback. "
+            "0 means no limit."
+        ),
+    )
     return parser.parse_args()
+
+
+def add_provenance_context(
+    chunks: list[dict],
+    use_ollama_summary: bool,
+    summarizer_model: str,
+    summary_timeout: int,
+    ollama_summary_max_chunks: int,
+) -> list[dict]:
+    """Add context summaries and bake provenance headers into embedding text."""
+    summary_cache: dict[str, str] = {}
+
+    ollama_budget = max(0, ollama_summary_max_chunks)
+
+    for idx, chunk in enumerate(chunks, start=1):
+        should_use_ollama = use_ollama_summary and (ollama_budget == 0 or idx <= ollama_budget)
+        summary = summarize_entity_dense(
+            chunk_text=chunk.get("text", ""),
+            summarizer_model=summarizer_model,
+            use_ollama_summary=should_use_ollama,
+            summary_timeout=summary_timeout,
+            summary_cache=summary_cache,
+        )
+        chunk["context_summary"] = summary
+        source = chunk.get("source_filename", "unknown.md")
+        entity_id = chunk.get("entity_id", chunk.get("report_id", ""))
+
+        chunk["contextualized_text"] = (
+            f"[Source: {source}] [Entity_ID: {entity_id}] [Context: {summary}]\n"
+            f"{chunk.get('text', '')}"
+        )
+
+        if idx % 1000 == 0 or idx == len(chunks):
+            print(f"  Added provenance headers for {idx}/{len(chunks)} chunks")
+
+    return chunks
 
 
 def load_markdown_chunks(strategy: str) -> list[dict]:
@@ -178,7 +347,7 @@ def embed_chunks(chunks: list[dict], model_name: str) -> np.ndarray:
     print(f"Loading embedding model: {model_name}")
     model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
 
-    texts = [c.get("text", "") for c in chunks]
+    texts = [c.get("contextualized_text", c.get("text", "")) for c in chunks]
     print(f"Encoding {len(texts)} chunks...")
 
     batch_size = 64
@@ -251,7 +420,11 @@ def upsert(index, chunks: list[dict], embeddings: np.ndarray, strategy: str, bat
                 "values": emb.tolist(),
                 "metadata": {
                     "report_id": chunk.get("report_id", ""),
+                    "entity_id": chunk.get("entity_id", chunk.get("report_id", "")),
+                    "source_filename": chunk.get("source_filename", ""),
                     "section_title": chunk.get("section_title", ""),
+                    "role": chunk.get("role", "Unknown"),
+                    "context_summary": chunk.get("context_summary", ""),
                     "strategy": strategy,
                     "source": "dataset-pipeline/data/extracted/extracted",
                 },
@@ -270,6 +443,13 @@ def main() -> None:
     args = parse_args()
 
     chunks = load_markdown_chunks(args.strategy)
+    chunks = add_provenance_context(
+        chunks=chunks,
+        use_ollama_summary=args.use_ollama_summary,
+        summarizer_model=args.summarizer_model,
+        summary_timeout=args.summary_timeout,
+        ollama_summary_max_chunks=args.ollama_summary_max_chunks,
+    )
     embeddings = embed_chunks(chunks, args.model_name)
     save_local_artifacts(chunks, embeddings, args.strategy)
 

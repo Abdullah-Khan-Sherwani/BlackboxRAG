@@ -68,17 +68,24 @@ def build_vectors(chunk_ids, embeddings, chunks_dict, strategy):
     vectors = []
     for cid, emb in zip(chunk_ids, embeddings):
         chunk = chunks_dict[cid]
+        entity_id = chunk.get("entity_id") or chunk.get("ntsb_no") or chunk.get("report_id", "")
         vectors.append({
             "id": cid,
             "values": emb.tolist(),
             "metadata": {
                 "ntsb_no": chunk.get("ntsb_no", ""),
+                "report_id": chunk.get("report_id", ""),
+                "entity_id": entity_id,
                 "event_date": chunk.get("event_date", ""),
                 "state": chunk.get("state", ""),
                 "make": chunk.get("make", ""),
                 "model": chunk.get("model", ""),
                 "phase_of_flight": chunk.get("phase_of_flight", ""),
                 "weather": chunk.get("weather", ""),
+                "role": chunk.get("role", "Unknown"),
+                "source_filename": chunk.get("source_filename", ""),
+                "context_summary": chunk.get("context_summary", ""),
+                "section_title": chunk.get("section_title", ""),
                 "strategy": strategy,
             },
         })

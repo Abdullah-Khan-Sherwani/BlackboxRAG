@@ -130,6 +130,19 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
         local = chunks_dict.get(match.id, {})
         # Parent strategy uses child retrieval with parent-level context for generation.
         match.metadata["text"] = local.get("parent_text") or local.get("text", "")
+        # Ensure provenance fields are available even when Pinecone metadata is sparse.
+        if "entity_id" in local and not match.metadata.get("entity_id"):
+            match.metadata["entity_id"] = local.get("entity_id", "")
+        if "source_filename" in local and not match.metadata.get("source_filename"):
+            match.metadata["source_filename"] = local.get("source_filename", "")
+        if "context_summary" in local and not match.metadata.get("context_summary"):
+            match.metadata["context_summary"] = local.get("context_summary", "")
+        if "role" in local and not match.metadata.get("role"):
+            match.metadata["role"] = local.get("role", "Unknown")
+        if "section_title" in local and not match.metadata.get("section_title"):
+            match.metadata["section_title"] = local.get("section_title", "")
+        if "report_id" in local and not match.metadata.get("report_id"):
+            match.metadata["report_id"] = local.get("report_id", "")
         if "parent_id" in local:
             match.metadata["parent_id"] = local.get("parent_id", "")
 

@@ -58,7 +58,7 @@ with st.sidebar:
     llm_provider_label = st.selectbox(
         "Generator",
         ["Ollama (Local)", "DeepSeek (NVIDIA API)", "GPT (NVIDIA API)"],
-        index=1,
+        index=0,
         help="Choose which LLM generates the final answer from retrieved chunks.",
     )
     if "Ollama" in llm_provider_label:
