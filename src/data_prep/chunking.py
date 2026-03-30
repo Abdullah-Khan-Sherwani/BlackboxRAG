@@ -124,7 +124,7 @@ def chunk_semantic(df):
 
 
 def chunk_markdown_section_aware(md_file_path: str):
-    """Section-aware chunking for markdown reports."""
+    """Section-aware chunking for markdown reports with full metadata attachment."""
     with open(md_file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -148,20 +148,62 @@ def chunk_markdown_section_aware(md_file_path: str):
 
     chunks = []
     report_id = os.path.basename(md_file_path).replace(".md", "")
+    
+    # Extract metadata directly from markdown content.
+    # Parse the first section to find aircraft type, date, location, etc.
+    first_section_text = (sections[0] if sections and sections[0].strip() else "") + (
+        sections[2] if len(sections) > 2 else ""
+    )
+    
+    # Extract NTSB number (format: "NTSB/AAR-YY/NN" or "DCA...")
+    ntsb_match = re.search(r"(NTSB/\w+-\d+/\d+|DCA\d+\w+\d+)", first_section_text)
+    ntsb_no = ntsb_match.group(1) if ntsb_match else report_id
+    
+    # Extract aircraft type (Boeing 747-300, Cessna 172, MD-80, etc.)
+    aircraft_match = re.search(
+        r'(Boeing|Airbus|Cessna|Piper|Beechcraft|Embraer|Bombardier|McDonnell Douglas|Douglas)\s+(\w+[\-\w]*)',
+        first_section_text,
+        re.IGNORECASE
+    )
+    make = aircraft_match.group(1) if aircraft_match else "unknown"
+    model = aircraft_match.group(2) if aircraft_match else "unknown"
+    
+    # Extract date (format: "August 6, 1997" or "2022-09-04")
+    date_match = re.search(
+        r'(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+,?\s+\d{4}|\d{4}-\d{2}-\d{2}',
+        first_section_text
+    )
+    event_date = date_match.group(0) if date_match else "unknown"
+    
+    # Extract location/state
+    state_match = re.search(r'(?:Guam|Hawaii|Alaska|California|Texas|Florida|New York|Colorado|Alaska|Washington|Oregon|Arizona|Nevada|Utah|Wyoming|Montana|Idaho|North Dakota|South Dakota|Nebraska|Kansas|Oklahoma|Texas|Minnesota|Wisconsin|Michigan|Illinois|Indiana|Ohio|Pennsylvania|New York|Vermont|New Hampshire|Maine|Massachusetts|Rhode Island|Connecticut|New Jersey|Delaware|Maryland|Virginia|West Virginia|North Carolina|South Carolina|Georgia|Florida|Alabama|Mississippi|Louisiana|Arkansas|Missouri|Iowa|Tennessee|Kentucky|District of Columbia|Puerto Rico|Virgin Islands|Guam|American Samoa)\b', first_section_text, re.IGNORECASE)
+    state = state_match.group(0) if state_match else "unknown"
+    
+    # Prepare metadata dict
+    metadata = {
+        "ntsb_no": ntsb_no,
+        "event_date": event_date,
+        "make": make,
+        "model": model,
+        "phase_of_flight": "unknown",  # Not typically in markdown header
+        "weather": "unknown",  # Not typically in markdown header
+        "state": state,
+    }
 
     for sec_idx, section in enumerate(parsed_sections):
         if not section["content"] or re.match(r"^[\W_]+$", section["content"]):
             continue
 
         for chunk_idx, chunk_text in enumerate(splitter.split_text(section["content"])):
-            chunks.append(
-                {
-                    "chunk_id": f"{report_id}_sec{sec_idx:02d}_{chunk_idx:03d}",
-                    "report_id": report_id,
-                    "section_title": section["title"],
-                    "text": f"Section: {section['title']}\n{chunk_text}",
-                }
-            )
+            base_chunk = {
+                "chunk_id": f"{report_id}_sec{sec_idx:02d}_{chunk_idx:03d}",
+                "report_id": report_id,
+                "section_title": section["title"],
+                "text": f"Section: {section['title']}\n{chunk_text}",
+            }
+            # Attach full metadata from CSV match
+            base_chunk.update(metadata)
+            chunks.append(base_chunk)
 
     return chunks
 

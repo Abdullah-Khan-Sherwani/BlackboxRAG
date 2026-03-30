@@ -50,3 +50,4 @@ coverage.xml
 # Streamlit (for later phase of your project)
 .streamlit/*
 !.streamlit/config.toml
+*.npz

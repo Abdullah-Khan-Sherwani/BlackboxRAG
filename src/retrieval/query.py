@@ -9,6 +9,8 @@ import os
 from dotenv import load_dotenv
 from pinecone import Pinecone
 
+from src.retrieval.report_mapper import get_pinecone_filter
+
 INDEX_NAME = "ntsb-rag"
 MODEL_NAME = "jinaai/jina-embeddings-v5-text-nano"
 
@@ -61,11 +63,27 @@ def available_strategies():
 
 def load_model():
     """Load the Jina embedding model."""
+    import os as os_module
+    import sys
+    from io import StringIO
     from transformers import AutoModel
-    print(f"Loading model: {MODEL_NAME}")
-    model = AutoModel.from_pretrained(MODEL_NAME, trust_remote_code=True)
-    print("Model loaded.")
-    return model
+    
+    # Suppress tqdm/stderr to avoid broken pipe errors in Streamlit
+    old_stderr = sys.stderr
+    old_stdout = sys.stdout
+    
+    try:
+        # Redirect stderr and stdout to avoid broken pipe on tqdm
+        sys.stderr = StringIO()
+        sys.stdout = StringIO()
+        
+        model = AutoModel.from_pretrained(MODEL_NAME, trust_remote_code=True)
+        return model
+    finally:
+        # Restore stderr and stdout
+        sys.stderr = old_stderr
+        sys.stdout = old_stdout
+        print(f"Model loaded: {MODEL_NAME}")
 
 
 def init_pinecone():
@@ -82,18 +100,23 @@ def init_pinecone():
 def retrieve(query, strategy, top_k=5, model=None, index=None):
     """Encode a query and retrieve top-k matching chunks from Pinecone.
 
+    Uses query-to-report mapping to filter results for single-event queries.
     Enriches each match's metadata with the full text from local JSON.
     """
     try:
         query_embedding = model.encode(texts=[query], task="retrieval", prompt_name="query")
     except ValueError:
         query_embedding = model.encode(texts=[query], task="retrieval")
+    
+    # Build filter: includes strategy and optional NTSB number filter
+    filter_dict = get_pinecone_filter(query, strategy)
+    
     try:
         results = index.query(
             vector=query_embedding[0].tolist(),
             top_k=top_k,
             include_metadata=True,
-            filter={"strategy": {"$eq": strategy}},
+            filter=filter_dict,
         )
     except Exception as e:
         raise RuntimeError(

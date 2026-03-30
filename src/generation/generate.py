@@ -4,6 +4,7 @@ Takes retrieved chunks + user query → calls LLM → produces an answer.
 Supports both Pinecone matches and dict-based hybrid results.
 """
 import os
+import re
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
@@ -48,6 +49,31 @@ def _get_meta(chunk, key, default="N/A"):
     return chunk.get(key, default)
 
 
+def _is_comparison_query(query):
+    q = (query or "").lower()
+    patterns = [r"\bcompare\b", r"\bversus\b", r"\bvs\.?\b", r"\bdifference between\b", r"\bacross\b"]
+    return any(re.search(p, q) for p in patterns)
+
+
+def _report_ids(chunks):
+    ids = []
+    for c in chunks:
+        rid = _get_meta(c, "ntsb_no", "") or _get_meta(c, "report_id", "")
+        rid = str(rid).strip()
+        if rid:
+            ids.append(rid)
+    return ids
+
+
+def _dominant_report_id(chunks):
+    counts = {}
+    for rid in _report_ids(chunks):
+        counts[rid] = counts.get(rid, 0) + 1
+    if not counts:
+        return ""
+    return max(counts, key=counts.get)
+
+
 def build_prompt(query, retrieved_chunks):
     """Build system instruction and user prompt from query and context chunks.
 
@@ -67,7 +93,22 @@ def build_prompt(query, retrieved_chunks):
         context_blocks.append(f"{header}\n{text}")
 
     context_str = "\n\n".join(context_blocks)
-    user_prompt = f"--- Context ---\n{context_str}\n\n--- Question ---\n{query}"
+
+    # Anti-merge guard: for single-event questions, avoid combining facts across
+    # different report ids when retrieval is mixed.
+    report_ids = set(_report_ids(retrieved_chunks))
+    guard = ""
+    if len(report_ids) > 1 and not _is_comparison_query(query):
+        dominant = _dominant_report_id(retrieved_chunks)
+        guard = (
+            "\n\n--- Safety Rule ---\n"
+            f"The retrieved context spans multiple reports ({', '.join(sorted(report_ids)[:6])}). "
+            f"Treat this as a single-event question and prioritize report {dominant or 'the dominant report'}. "
+            "Do NOT combine crew numbers, dates, or quantitative facts across different report IDs. "
+            "If key facts conflict across reports, state the ambiguity and ask for a specific report/flight identifier."
+        )
+
+    user_prompt = f"--- Context ---\n{context_str}{guard}\n\n--- Question ---\n{query}"
     return SYSTEM_PROMPT, user_prompt
 
 

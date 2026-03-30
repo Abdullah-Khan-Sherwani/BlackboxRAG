@@ -94,8 +94,9 @@ with st.sidebar:
 
     mode = st.radio(
         "Retrieval Mode",
-        ["Semantic Only", "Hybrid (BM25 + Semantic + Rerank)"],
+        ["Semantic Only", "Hybrid (BM25 + Semantic)", "Hybrid (with Cross-Encoder Rerank)"],
         index=1,
+        help="Semantic: Use embeddings only. Hybrid: Combine BM25+Semantic. Rerank: Add cross-encoder scoring (slower, sometimes worse for domain-specific queries).",
     )
 
     top_k = st.slider("Number of chunks to retrieve", 3, 50, 10)
@@ -112,7 +113,7 @@ with st.sidebar:
         st.markdown("- Generator: GPT-4o 120B (NVIDIA)")
     else:
         st.markdown("- Generator: DeepSeek V3.1 (NVIDIA)")
-    st.markdown("- Reranker: ms-marco-MiniLM-L-6-v2")
+    st.markdown("- Reranker: ms-marco-MiniLM-L-12-v2 (upgraded, better scoring)")
 
 
 # -- Main area ----------------------------------------------------------------
@@ -131,37 +132,40 @@ if query:
 
     # Retrieve
     multi_query_variants = None
-    if is_hybrid:
-        reranker = get_reranker()
+    if "Hybrid" in mode:
+        reranker = get_reranker() if "Rerank" in mode else None
         bm25, chunks = get_bm25(strategy)
 
         # Step 1: Query expansion
-        with st.spinner("Step 1/5 — Expanding query variants..."):
+        with st.spinner("Step 1/4 — Expanding query variants..."):
             queries = expand_query_variants(query)
 
         # Step 2: Multi-Query expansion (optional, slow — LLM API call)
         if use_multi_query:
             mq_label = "GPT" if llm_provider == "gpt" else "DeepSeek"
-            with st.spinner(f"Step 2/5 — Generating multi-query variants ({mq_label})..."):
+            with st.spinner(f"Step 2/4 — Generating multi-query variants ({mq_label})..."):
                 multi_query_variants = generate_multi_queries(query, model=llm_provider)
                 if multi_query_variants:
                     queries.extend(multi_query_variants)
 
-        # Step 3: Semantic + BM25 retrieval for each query variant
+        # Step 3: Semantic + BM25 retrieval for each query variant (increased from 40 to 60)
         ranked_lists = []
         for i, q in enumerate(queries, 1):
-            with st.spinner(f"Step 3/5 — Searching (variant {i}/{len(queries)})..."):
-                ranked_lists.append(retrieve(q, strategy, top_k=40, model=jina_model, index=index))
-                ranked_lists.append(bm25_retrieve(q, bm25, chunks, top_k=40))
+            with st.spinner(f"Step 3/4 — Searching (variant {i}/{len(queries)})..."):
+                ranked_lists.append(retrieve(q, strategy, top_k=60, model=jina_model, index=index))
+                ranked_lists.append(bm25_retrieve(q, bm25, chunks, top_k=60))
 
-        # Step 4: RRF fusion + cross-encoder rerank
-        with st.spinner("Step 4/5 — Fusing & reranking candidates..."):
+        # Step 4: RRF fusion + optional cross-encoder rerank
+        with st.spinner(f"Step 4/4 — Fusing & {'reranking' if reranker else 'selecting'} candidates..."):
             fused = rrf_fuse_lists(ranked_lists)
-            matches = rerank(query, fused, reranker, top_k=top_k, min_unique_reports=3)
-
-        # Step 5: Neighbor enrichment
-        with st.spinner("Step 5/5 — Enriching with neighboring chunks..."):
-            matches = enrich_with_neighbors(matches, chunks, window=1)
+            if reranker:
+                matches = rerank(query, fused, reranker, top_k=top_k, min_unique_reports=3)
+            else:
+                # Just use RRF scores, no cross-encoder reranking
+                matches = sorted(fused, key=lambda x: x.get("score", 0), reverse=True)[:top_k]
+            
+            # Neighbor enrichment (increased window from 1 to 2 for more context)
+            matches = enrich_with_neighbors(matches, chunks, window=2)
     else:
         with st.spinner("Retrieving relevant chunks..."):
             matches = retrieve(query, strategy, top_k=top_k, model=jina_model, index=index)

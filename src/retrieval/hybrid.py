@@ -1,5 +1,6 @@
 """
 Hybrid retrieval: BM25 + semantic search with RRF fusion and cross-encoder reranking.
+Enhanced with HyDE support, better lightweight cross-encoder, and increased retrieval.
 """
 import json
 import os
@@ -13,7 +14,8 @@ from src.retrieval.query import load_model, init_pinecone, retrieve, available_s
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STRATEGIES = ["section", "fixed", "recursive", "semantic", "parent"]
-RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+# Upgraded to 12-layer MiniLM for better scoring while keeping size small
+RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-12-v2"
 
 CHUNK_FILE_BY_STRATEGY = {
     "fixed": "chunks_fixed.json",
@@ -80,6 +82,53 @@ def load_reranker():
     return CrossEncoder(RERANKER_MODEL)
 
 
+def _is_comparison_query(query):
+    q = (query or "").lower()
+    patterns = [
+        r"\bcompare\b",
+        r"\bversus\b",
+        r"\bvs\.?\b",
+        r"\bdifference between\b",
+        r"\bacross\b",
+    ]
+    return any(re.search(p, q) for p in patterns)
+
+
+def _is_single_event_query(query):
+    """Heuristic: queries not phrased as comparisons are treated as single-event intent."""
+    return not _is_comparison_query(query)
+
+
+def _soft_report_budget(ranked, top_k, dominant_report, keep_ratio=0.8):
+    """Keep mostly dominant-report chunks while preserving minority evidence.
+
+    This is a soft budget (not a hard filter): a small portion of non-dominant
+    chunks is retained to avoid overfitting and preserve context breadth.
+    """
+    if not ranked or not dominant_report:
+        return ranked[:top_k]
+
+    dom = [r for r in ranked if r.get("ntsb_no", "") == dominant_report]
+    other = [r for r in ranked if r.get("ntsb_no", "") != dominant_report]
+
+    dom_budget = max(1, min(top_k, int(round(top_k * keep_ratio))))
+    other_budget = max(0, top_k - dom_budget)
+
+    selected = dom[:dom_budget] + other[:other_budget]
+
+    # Fill if one side is sparse.
+    if len(selected) < top_k:
+        already = {_get_id(s) for s in selected}
+        for item in ranked:
+            if _get_id(item) in already:
+                continue
+            selected.append(item)
+            if len(selected) >= top_k:
+                break
+
+    return selected[:top_k]
+
+
 def rerank(query, candidates, reranker, top_k=6, min_unique_reports=3):
     """Rerank candidates using a cross-encoder and return top-k.
 
@@ -91,6 +140,27 @@ def rerank(query, candidates, reranker, top_k=6, min_unique_reports=3):
     ce_scores = reranker.predict(pairs)
     for i, score in enumerate(ce_scores):
         candidates[i]["score"] = float(score)
+
+    # Soft anti-mixing bias for single-event queries:
+    # prefer the dominant report but keep a small minority slice.
+    if _is_single_event_query(query):
+        report_strength = {}
+        for c in candidates:
+            rid = c.get("ntsb_no", "")
+            if not rid:
+                continue
+            report_strength[rid] = report_strength.get(rid, 0.0) + max(0.0, c["score"])
+
+        dominant_report = max(report_strength, key=report_strength.get) if report_strength else ""
+        for c in candidates:
+            rid = c.get("ntsb_no", "")
+            if not rid or not dominant_report:
+                continue
+            if rid == dominant_report:
+                c["score"] += 0.12
+            else:
+                c["score"] -= 0.06
+
     ranked = sorted(candidates, key=lambda x: x["score"], reverse=True)
 
     selected = []
@@ -146,6 +216,16 @@ def rerank(query, candidates, reranker, top_k=6, min_unique_reports=3):
             selected_ntsb = {s.get("ntsb_no", "") for s in selected if s.get("ntsb_no", "")}
             if len(selected_ntsb) >= min_unique_reports:
                 break
+
+    if _is_single_event_query(query):
+        # Identify dominant report after rerank and apply soft 80/20 budget.
+        counts = {}
+        for item in ranked[: max(top_k * 3, top_k)]:
+            rid = item.get("ntsb_no", "")
+            if rid:
+                counts[rid] = counts.get(rid, 0) + 1
+        dominant_report = max(counts, key=counts.get) if counts else ""
+        selected = _soft_report_budget(ranked, top_k=top_k, dominant_report=dominant_report, keep_ratio=0.8)
 
     return selected
 
@@ -280,29 +360,45 @@ def enrich_with_neighbors(results, chunks, window=1):
 
 def hybrid_retrieve(query, strategy, top_k=6, model=None, index=None,
                     bm25=None, chunks=None, reranker=None,
-                    semantic_top_k=40, bm25_top_k=40,
+                    semantic_top_k=60, bm25_top_k=60,
                     enable_query_expansion=True,
-                    neighbor_window=1,
-                    use_hyde=False,
+                    neighbor_window=2,
+                    use_multi_query=False,
                     min_unique_reports=3,
                     return_debug=False):
     """Full hybrid retrieval pipeline: semantic + BM25 → RRF → rerank.
 
+    Args:
+        query: Search query string
+        strategy: Chunking strategy (section, fixed, recursive, etc.)
+        top_k: Final number of results to return
+        model: Semantic model instance
+        index: Pinecone index instance
+        bm25: BM25 index instance
+        chunks: All chunks for BM25
+        reranker: Cross-encoder instance
+        semantic_top_k: Top-k for semantic retrieval (increased from 40→60)
+        bm25_top_k: Top-k for BM25 retrieval (increased from 40→60)
+        enable_query_expansion: Whether to expand queries
+        neighbor_window: Context window for enrichment (increased from 1→2)
+        use_multi_query: Whether to use multi-query expansion (replaces use_hyde)
+        min_unique_reports: Minimum unique NTSB reports to include
+        return_debug: Return debug info with results
+
     Returns list[dict] with keys: text, ntsb_no, event_date, make, model, score, etc.
-    If return_debug=True, returns (results, debug_info) where debug_info contains
-    hyde_doc and query_variants.
+    If return_debug=True, returns (results, debug_info).
     """
-    debug = {"hyde_doc": None, "query_variants": []}
+    debug = {"multi_queries": None, "query_variants": []}
 
     # Query expansion + fusion retrieval
     queries = expand_query_variants(query) if enable_query_expansion else [query]
     debug["query_variants"] = list(queries)
 
-    if use_hyde:
+    if use_multi_query:
         multi_queries = generate_multi_queries(query)
         if multi_queries:
             queries.extend(multi_queries)
-            debug["hyde_doc"] = multi_queries  # key kept for backward compat
+            debug["multi_queries"] = multi_queries
 
     ranked_lists = []
     for q in queries:
