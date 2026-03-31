@@ -5,6 +5,7 @@ Enhanced with HyDE support, better lightweight cross-encoder, and increased retr
 import json
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
@@ -13,17 +14,34 @@ from src.llm.client import call_eval_llm
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-STRATEGIES = ["section", "fixed", "recursive", "semantic", "parent"]
-# Upgraded to 12-layer MiniLM for better scoring while keeping size small
-RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-12-v2"
+STRATEGIES = ["md_recursive", "parent_child", "fixed", "recursive", "semantic"]
+RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
-CHUNK_FILE_BY_STRATEGY = {
-    "fixed": "chunks_fixed.json",
-    "recursive": "chunks_recursive.json",
-    "semantic": "chunks_semantic.json",
-    "section": "chunks_md_section.json",
-    "parent": "chunks_parent.json",
-}
+def _canonical_strategy(strategy: str) -> str:
+    if strategy in {"section", "md_recursive"}:
+        return "md_recursive"
+    if strategy in {"parent", "parent_child"}:
+        return "parent_child"
+    return strategy
+
+
+def _chunks_file_for_strategy(strategy: str) -> str:
+    s = _canonical_strategy(strategy)
+    if s in {"md_recursive", "parent_child"}:
+        return f"chunks_md_{s}.json"
+    if s in {"fixed", "recursive", "semantic"}:
+        baseline_name = f"chunks_baseline_{s}.json"
+        baseline_path = os.path.join(BASE_DIR, "data", "processed", baseline_name)
+        if os.path.exists(baseline_path):
+            return baseline_name
+
+        legacy = {
+            "fixed": "chunks_fixed.json",
+            "recursive": "chunks_recursive.json",
+            "semantic": "chunks_semantic.json",
+        }
+        return legacy[s]
+    return f"chunks_md_{s}.json"
 
 
 def build_bm25_index(strategy):
@@ -31,7 +49,7 @@ def build_bm25_index(strategy):
 
     Returns (BM25Okapi, list[dict]) — the index and the original chunk dicts.
     """
-    filename = CHUNK_FILE_BY_STRATEGY.get(strategy, f"chunks_{strategy}.json")
+    filename = _chunks_file_for_strategy(strategy)
     path = os.path.join(BASE_DIR, "data", "processed", filename)
     with open(path, "r", encoding="utf-8") as f:
         chunks = json.load(f)
@@ -79,7 +97,10 @@ def rrf_fuse_lists(result_lists, k=60):
 
 def load_reranker():
     """Load the cross-encoder reranking model."""
-    return CrossEncoder(RERANKER_MODEL)
+    import torch
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    return CrossEncoder(RERANKER_MODEL, device=device)
 
 
 def _is_comparison_query(query):
@@ -184,7 +205,7 @@ def apply_dynamic_entity_weighting(
     return boosted, debug
 
 
-def rerank(query, candidates, reranker, top_k=6, min_unique_reports=3):
+def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
     """Rerank candidates using a cross-encoder and return top-k.
 
     Adds a mild diversity constraint so one report does not monopolize results.
@@ -413,12 +434,12 @@ def enrich_with_neighbors(results, chunks, window=1):
     return enriched
 
 
-def hybrid_retrieve(query, strategy, top_k=6, model=None, index=None,
+def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
                     bm25=None, chunks=None, reranker=None,
                     semantic_top_k=60, bm25_top_k=60,
                     enable_query_expansion=True,
                     neighbor_window=2,
-                    use_multi_query=False,
+                    use_multi_query=True,
                     min_unique_reports=3,
                     return_debug=False):
     """Full hybrid retrieval pipeline: semantic + BM25 → RRF → rerank.
@@ -453,20 +474,36 @@ def hybrid_retrieve(query, strategy, top_k=6, model=None, index=None,
         },
     }
 
-    # Query expansion + fusion retrieval
-    queries = expand_query_variants(query) if enable_query_expansion else [query]
-    debug["query_variants"] = list(queries)
-
+    # Query set: prioritize LLM multi-query (3-5 variants) and backfill deterministically.
+    queries = [query]
     if use_multi_query:
         multi_queries = generate_multi_queries(query)
         if multi_queries:
-            queries.extend(multi_queries)
             debug["multi_queries"] = multi_queries
+            queries.extend(multi_queries)
+
+    if enable_query_expansion and len(queries) < 3:
+        queries.extend(expand_query_variants(query))
+
+    deduped = []
+    seen = set()
+    for q in queries:
+        key = (q or "").strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        deduped.append(q.strip())
+    queries = deduped[:5]
+    debug["query_variants"] = list(queries)
 
     ranked_lists = []
     for q in queries:
-        semantic_results = retrieve(q, strategy, top_k=semantic_top_k, model=model, index=index)
-        bm25_results = bm25_retrieve(q, bm25, chunks, top_k=bm25_top_k)
+        # Execute lexical and semantic retrieval in parallel per query variant.
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            fut_sem = executor.submit(retrieve, q, strategy, semantic_top_k, model, index)
+            fut_bm25 = executor.submit(bm25_retrieve, q, bm25, chunks, bm25_top_k)
+            semantic_results = fut_sem.result()
+            bm25_results = fut_bm25.result()
         ranked_lists.append(semantic_results)
         ranked_lists.append(bm25_results)
 

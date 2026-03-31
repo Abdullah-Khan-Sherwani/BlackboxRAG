@@ -13,7 +13,11 @@ import re
 import pandas as pd
 from langchain_experimental.text_splitter import SemanticChunker
 from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_text_splitters import CharacterTextSplitter, RecursiveCharacterTextSplitter
+from langchain_text_splitters import (
+    CharacterTextSplitter,
+    MarkdownHeaderTextSplitter,
+    RecursiveCharacterTextSplitter,
+)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 SAMPLE_PATH = os.path.join(BASE_DIR, "data", "processed", "sampled_reports.csv")
@@ -231,6 +235,344 @@ def chunk_markdown_recursive(md_file_path: str):
         )
 
     return chunks
+
+
+def _extract_md_report_metadata(content: str, report_id: str) -> dict:
+    """Extract coarse report metadata directly from markdown content."""
+    ntsb_match = re.search(r"(NTSB/\w+-\d+/\d+|DCA\d+\w+\d+)", content)
+    ntsb_no = ntsb_match.group(1) if ntsb_match else report_id
+
+    aircraft_match = re.search(
+        r"(Boeing|Airbus|Cessna|Piper|Beechcraft|Embraer|Bombardier|McDonnell Douglas|Douglas)\s+(\w+[\-\w]*)",
+        content,
+        re.IGNORECASE,
+    )
+    make = aircraft_match.group(1) if aircraft_match else "unknown"
+    model = aircraft_match.group(2) if aircraft_match else "unknown"
+
+    date_match = re.search(
+        r"(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d+,?\s+\d{4}|\d{4}-\d{2}-\d{2}",
+        content,
+    )
+    event_date = date_match.group(0) if date_match else "unknown"
+
+    state_match = re.search(
+        r"(?:Guam|Hawaii|Alaska|California|Texas|Florida|New York|Colorado|Washington|Oregon|Arizona|Nevada|Utah|Wyoming|Montana|Idaho|North Dakota|South Dakota|Nebraska|Kansas|Oklahoma|Minnesota|Wisconsin|Michigan|Illinois|Indiana|Ohio|Pennsylvania|Vermont|New Hampshire|Maine|Massachusetts|Rhode Island|Connecticut|New Jersey|Delaware|Maryland|Virginia|West Virginia|North Carolina|South Carolina|Georgia|Alabama|Mississippi|Louisiana|Arkansas|Missouri|Iowa|Tennessee|Kentucky|District of Columbia|Puerto Rico|Virgin Islands|American Samoa)\b",
+        content,
+        re.IGNORECASE,
+    )
+    state = state_match.group(0) if state_match else "unknown"
+
+    return {
+        "ntsb_no": ntsb_no,
+        "event_date": event_date,
+        "make": make,
+        "model": model,
+        "phase_of_flight": "unknown",
+        "weather": "unknown",
+        "state": state,
+    }
+
+
+def _token_window_chunks(text: str, chunk_tokens: int = 192, overlap_tokens: int = 32) -> list[str]:
+    """Split text into approximate token windows using whitespace tokenization."""
+    words = text.split()
+    if not words:
+        return []
+
+    chunks = []
+    step = max(1, chunk_tokens - overlap_tokens)
+    for start in range(0, len(words), step):
+        window = words[start : start + chunk_tokens]
+        if not window:
+            break
+        chunks.append(" ".join(window))
+        if start + chunk_tokens >= len(words):
+            break
+    return chunks
+
+
+def _sentence_split(text: str) -> list[str]:
+    parts = re.split(r"(?<=[.!?])\s+", text.strip())
+    return [p.strip() for p in parts if p and p.strip()]
+
+
+def _rebalance_to_token_bounds(
+    pieces: list[str],
+    min_tokens: int = 512,
+    max_tokens: int = 1024,
+    target_tokens: int = 768,
+) -> list[str]:
+    """Merge/split text pieces into chunks constrained to token bounds (approx via whitespace tokens)."""
+    out: list[str] = []
+    buffer: list[str] = []
+    buffer_tokens = 0
+
+    def flush_buffer() -> None:
+        nonlocal buffer, buffer_tokens
+        if buffer:
+            out.append(" ".join(buffer).strip())
+            buffer = []
+            buffer_tokens = 0
+
+    for piece in pieces:
+        if not piece:
+            continue
+        words = piece.split()
+        if not words:
+            continue
+
+        # Split oversized piece first.
+        if len(words) > max_tokens:
+            if buffer_tokens >= min_tokens:
+                flush_buffer()
+            step = target_tokens
+            start = 0
+            while start < len(words):
+                window = words[start : start + max_tokens]
+                out.append(" ".join(window))
+                start += step
+            continue
+
+        if buffer_tokens + len(words) <= max_tokens:
+            buffer.append(piece)
+            buffer_tokens += len(words)
+            if buffer_tokens >= target_tokens:
+                flush_buffer()
+            continue
+
+        # Buffer would overflow with this piece.
+        if buffer_tokens < min_tokens and buffer:
+            merged = " ".join(buffer + [piece]).split()
+            start = 0
+            while start < len(merged):
+                window = merged[start : start + max_tokens]
+                out.append(" ".join(window))
+                start += target_tokens
+            buffer = []
+            buffer_tokens = 0
+        else:
+            flush_buffer()
+            buffer.append(piece)
+            buffer_tokens = len(words)
+
+    flush_buffer()
+
+    # Join trailing small chunk if possible.
+    if len(out) >= 2:
+        last_tokens = len(out[-1].split())
+        prev_tokens = len(out[-2].split())
+        if last_tokens < min_tokens and (last_tokens + prev_tokens) <= max_tokens:
+            out[-2] = f"{out[-2]} {out[-1]}".strip()
+            out.pop()
+
+    return [c for c in out if c]
+
+
+def _baseline_report_meta(md_file_path: str, content: str) -> dict:
+    report_id = os.path.basename(md_file_path).replace(".md", "")
+    meta = _extract_md_report_metadata(content, report_id)
+    return {
+        "report_id": report_id,
+        "ntsb_no": meta.get("ntsb_no", report_id),
+        "event_date": meta.get("event_date", "unknown"),
+        "make": meta.get("make", "unknown"),
+        "model": meta.get("model", "unknown"),
+    }
+
+
+def chunk_markdown_baseline_fixed(
+    md_file_path: str,
+    chunk_tokens: int = 768,
+    overlap_tokens: int = 128,
+) -> list[dict]:
+    """Baseline fixed chunking over markdown with 512-1024 token windows (approx)."""
+    with open(md_file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    report_meta = _baseline_report_meta(md_file_path, content)
+    report_id = report_meta["report_id"]
+    windows = _token_window_chunks(content, chunk_tokens=chunk_tokens, overlap_tokens=overlap_tokens)
+    chunks = []
+    for i, text in enumerate(windows):
+        token_count = len(text.split())
+        if token_count > 1024:
+            text = " ".join(text.split()[:1024])
+        chunks.append(
+            {
+                "chunk_id": f"{report_id}_base_fixed_{i:03d}",
+                "section_title": "Document",
+                "text": text,
+                **report_meta,
+            }
+        )
+    return chunks
+
+
+def chunk_markdown_baseline_recursive(md_file_path: str) -> list[dict]:
+    """Baseline recursive chunking (non-markdown-aware) constrained to 512-1024 tokens."""
+    with open(md_file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    report_meta = _baseline_report_meta(md_file_path, content)
+    report_id = report_meta["report_id"]
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=5200,
+        chunk_overlap=700,
+        separators=["\n\n", "\n", ". ", " ", ""],
+    )
+    raw_chunks = splitter.split_text(content)
+    bounded = _rebalance_to_token_bounds(raw_chunks, min_tokens=512, max_tokens=1024, target_tokens=768)
+
+    chunks = []
+    for i, text in enumerate(bounded):
+        chunks.append(
+            {
+                "chunk_id": f"{report_id}_base_rec_{i:03d}",
+                "section_title": "Document",
+                "text": text,
+                **report_meta,
+            }
+        )
+    return chunks
+
+
+def chunk_markdown_baseline_semantic(md_file_path: str) -> list[dict]:
+    """Baseline semantic chunking constrained to 512-1024 tokens."""
+    with open(md_file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    report_meta = _baseline_report_meta(md_file_path, content)
+    report_id = report_meta["report_id"]
+
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    semantic_chunker = SemanticChunker(embeddings, breakpoint_threshold_type="percentile")
+
+    try:
+        raw_chunks = semantic_chunker.split_text(content)
+    except Exception:
+        # Keep baseline stable when semantic splitter fails on edge cases.
+        return chunk_markdown_baseline_recursive(md_file_path)
+
+    if not raw_chunks:
+        return chunk_markdown_baseline_recursive(md_file_path)
+
+    bounded = _rebalance_to_token_bounds(raw_chunks, min_tokens=512, max_tokens=1024, target_tokens=768)
+
+    chunks = []
+    for i, text in enumerate(bounded):
+        chunks.append(
+            {
+                "chunk_id": f"{report_id}_base_sem_{i:03d}",
+                "section_title": "Document",
+                "text": text,
+                **report_meta,
+            }
+        )
+    return chunks
+
+
+def chunk_markdown_md_recursive(md_file_path: str):
+    """md_recursive strategy: header-aware splitting then recursive chunking."""
+    with open(md_file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    report_id = os.path.basename(md_file_path).replace(".md", "")
+    report_meta = _extract_md_report_metadata(content, report_id)
+
+    headers_to_split_on = [
+        ("#", "h1"),
+        ("##", "h2"),
+        ("###", "h3"),
+    ]
+    header_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+    section_docs = header_splitter.split_text(content)
+
+    splitter = RecursiveCharacterTextSplitter(
+        chunk_size=512,
+        chunk_overlap=50,
+        separators=["\n\n", "\n", ". ", " "],
+    )
+
+    chunks = []
+    for sec_idx, doc in enumerate(section_docs):
+        section_title = (
+            doc.metadata.get("h3")
+            or doc.metadata.get("h2")
+            or doc.metadata.get("h1")
+            or "Unknown Section"
+        )
+        section_text = (doc.page_content or "").strip()
+        if not section_text:
+            continue
+
+        sub_chunks = splitter.split_text(section_text)
+        for chunk_idx, chunk_text in enumerate(sub_chunks):
+            item = {
+                "chunk_id": f"{report_id}_mdrec_{sec_idx:03d}_{chunk_idx:03d}",
+                "report_id": report_id,
+                "section_title": section_title,
+                "text": chunk_text,
+            }
+            item.update(report_meta)
+            chunks.append(item)
+
+    return chunks
+
+
+def chunk_markdown_parent_child(md_file_path: str):
+    """parent_child strategy: header section as parent, token windows as children."""
+    with open(md_file_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    report_id = os.path.basename(md_file_path).replace(".md", "")
+    report_meta = _extract_md_report_metadata(content, report_id)
+
+    headers_to_split_on = [
+        ("#", "h1"),
+        ("##", "h2"),
+        ("###", "h3"),
+    ]
+    header_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
+    section_docs = header_splitter.split_text(content)
+
+    chunks = []
+    for sec_idx, doc in enumerate(section_docs):
+        section_title = (
+            doc.metadata.get("h3")
+            or doc.metadata.get("h2")
+            or doc.metadata.get("h1")
+            or "Unknown Section"
+        )
+        parent_text = (doc.page_content or "").strip()
+        if not parent_text:
+            continue
+
+        parent_id = f"{report_id}_parent_{sec_idx:03d}"
+        child_chunks = _token_window_chunks(parent_text, chunk_tokens=192, overlap_tokens=32)
+
+        for child_idx, child_text in enumerate(child_chunks):
+            item = {
+                "chunk_id": f"{report_id}_pchild_{sec_idx:03d}_{child_idx:03d}",
+                "parent_id": parent_id,
+                "report_id": report_id,
+                "section_title": section_title,
+                "text": child_text,
+                "parent_text": parent_text,
+            }
+            item.update(report_meta)
+            chunks.append(item)
+
+    return chunks
+
+
+# Backward-compatible wrappers used by existing ingestion code.
+def chunk_markdown_section_aware(md_file_path: str):
+    return chunk_markdown_md_recursive(md_file_path)
+
+
+def chunk_markdown_recursive(md_file_path: str):
+    return chunk_markdown_md_recursive(md_file_path)
 
 
 def chunk_parent(df):

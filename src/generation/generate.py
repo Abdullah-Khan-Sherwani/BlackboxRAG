@@ -83,26 +83,26 @@ def build_prompt(query, retrieved_chunks):
     """
     context_blocks = []
     for i, chunk in enumerate(retrieved_chunks, 1):
-        flight = (
-            _get_meta(chunk, "entity_id", "")
+        report_id = (
+            _get_meta(chunk, "report_id", "")
             or _get_meta(chunk, "ntsb_no", "")
-            or _get_meta(chunk, "report_id", "")
+            or _get_meta(chunk, "entity_id", "")
             or "Unknown"
         )
         role = _get_meta(chunk, "role", "Unknown")
-        source_name = _get_meta(chunk, "source_filename", "")
         section = _get_meta(chunk, "section_title", "")
         context_summary = _get_meta(chunk, "context_summary", "")
-        header = (
-            f"Chunk {i} | Flight: {flight} | Role: {role}"
-            f" | Source: {source_name or 'N/A'}"
-            f" | Section: {section or 'N/A'}"
-        )
+        numerics = _get_meta(chunk, "numerics", "None")
+        aircraft_components = _get_meta(chunk, "aircraft_components", "None")
+        header = f"[Report: {report_id} | Section: {section or 'N/A'}]"
         text = _get_meta(chunk, "text", "")
-        if context_summary:
-            context_blocks.append(f"{header}\nContext: {context_summary}\nData: {text}")
-        else:
-            context_blocks.append(f"{header}\nData: {text}")
+        context_blocks.append(
+            f"{header}\n"
+            f"[Chunk: {i} | Role: {role}]\n"
+            f"[Key Numerics: {numerics} | Components: {aircraft_components}]\n"
+            f"[Context: {context_summary or 'N/A'}]\n"
+            f"Data: {text}"
+        )
 
     context_str = "\n\n".join(context_blocks)
 
@@ -162,7 +162,7 @@ def rag_pipeline(query, strategy, top_k=5, model=None, index=None,
     }
 
 
-def rag_pipeline_hybrid(query, strategy, top_k=5,
+def rag_pipeline_hybrid(query, strategy, top_k=10,
                         model=None, index=None,
                         bm25=None, chunks=None, reranker=None,
                         llm_provider="deepseek", ollama_model="qwen2.5:32b"):

@@ -5,6 +5,7 @@ Text is stored locally (not in Pinecone) and looked up by chunk_id after retriev
 """
 import json
 import os
+import warnings
 
 from dotenv import load_dotenv
 from pinecone import Pinecone
@@ -15,7 +16,7 @@ INDEX_NAME = "ntsb-rag"
 MODEL_NAME = "jinaai/jina-embeddings-v5-text-nano"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ALL_STRATEGIES = ["section", "fixed", "recursive", "semantic", "parent"]
+ALL_STRATEGIES = ["md_recursive", "parent_child", "fixed", "recursive", "semantic", "parent"]
 
 SAMPLE_QUERIES = [
     "What are common causes of engine failure during takeoff?",
@@ -26,19 +27,42 @@ SAMPLE_QUERIES = [
 # Cache for local chunk lookups: {strategy: {chunk_id: chunk_dict}}
 _chunks_cache = {}
 
-CHUNK_FILE_BY_STRATEGY = {
-    "fixed": "chunks_fixed.json",
-    "recursive": "chunks_recursive.json",
-    "semantic": "chunks_semantic.json",
-    "section": "chunks_md_section.json",
-    "parent": "chunks_parent.json",
-}
+
+def _canonical_strategy(strategy: str) -> str:
+    """Map legacy names to the canonical markdown strategies."""
+    if strategy in {"section", "md_recursive"}:
+        return "md_recursive"
+    if strategy in {"parent", "parent_child"}:
+        return "parent_child"
+    return strategy
+
+
+def _chunks_file_for_strategy(strategy: str) -> str:
+    """Resolve local chunk artifact name across advanced and baseline modes."""
+    s = _canonical_strategy(strategy)
+    if s in {"md_recursive", "parent_child"}:
+        return f"chunks_md_{s}.json"
+    if s in {"fixed", "recursive", "semantic"}:
+        baseline_name = f"chunks_baseline_{s}.json"
+        baseline_path = os.path.join(BASE_DIR, "data", "processed", baseline_name)
+        if os.path.exists(baseline_path):
+            return baseline_name
+
+        # Legacy fallback from earlier tabular experiments.
+        legacy = {
+            "fixed": "chunks_fixed.json",
+            "recursive": "chunks_recursive.json",
+            "semantic": "chunks_semantic.json",
+        }
+        return legacy[s]
+    return f"chunks_md_{s}.json"
 
 
 def load_chunks(strategy):
     """Load and cache the local chunks JSON for a strategy."""
+    strategy = _canonical_strategy(strategy)
     if strategy not in _chunks_cache:
-        filename = CHUNK_FILE_BY_STRATEGY.get(strategy, f"chunks_{strategy}.json")
+        filename = _chunks_file_for_strategy(strategy)
         path = os.path.join(BASE_DIR, "data", "processed", filename)
         if not os.path.exists(path):
             raise FileNotFoundError(
@@ -46,7 +70,14 @@ def load_chunks(strategy):
             )
         with open(path, "r", encoding="utf-8") as f:
             chunks = json.load(f)
-        _chunks_cache[strategy] = {c["chunk_id"]: c for c in chunks}
+        by_id = {c["chunk_id"]: c for c in chunks}
+        parent_lookup = {}
+        for c in chunks:
+            pid = c.get("parent_id", "")
+            ptext = c.get("parent_text", "")
+            if pid and ptext and pid not in parent_lookup:
+                parent_lookup[pid] = ptext
+        _chunks_cache[strategy] = {"by_id": by_id, "parent_lookup": parent_lookup}
     return _chunks_cache[strategy]
 
 
@@ -54,7 +85,7 @@ def available_strategies():
     """Return chunking strategies that have local chunk files available."""
     out = []
     for s in ALL_STRATEGIES:
-        filename = CHUNK_FILE_BY_STRATEGY.get(s, f"chunks_{s}.json")
+        filename = _chunks_file_for_strategy(s)
         path = os.path.join(BASE_DIR, "data", "processed", filename)
         if os.path.exists(path):
             out.append(s)
@@ -63,7 +94,7 @@ def available_strategies():
 
 def load_model():
     """Load the Jina embedding model."""
-    import os as os_module
+    import torch
     import sys
     from io import StringIO
     from transformers import AutoModel
@@ -71,6 +102,12 @@ def load_model():
     # Suppress tqdm/stderr to avoid broken pipe errors in Streamlit
     old_stderr = sys.stderr
     old_stdout = sys.stdout
+
+    # Silence noisy upstream deprecation warnings from optional image modules.
+    warnings.filterwarnings(
+        "ignore",
+        message=r"Accessing `__path__` from `.*`\. Returning `__path__` instead\..*",
+    )
     
     try:
         # Redirect stderr and stdout to avoid broken pipe on tqdm
@@ -78,6 +115,10 @@ def load_model():
         sys.stdout = StringIO()
         
         model = AutoModel.from_pretrained(MODEL_NAME, trust_remote_code=True)
+        runtime_device = "cuda" if torch.cuda.is_available() else "cpu"
+        if hasattr(model, "to"):
+            model = model.to(runtime_device)
+        setattr(model, "_runtime_device", runtime_device)
         return model
     finally:
         # Restore stderr and stdout
@@ -103,13 +144,29 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
     Uses query-to-report mapping to filter results for single-event queries.
     Enriches each match's metadata with the full text from local JSON.
     """
+    canonical_strategy = _canonical_strategy(strategy)
+
+    runtime_device = getattr(model, "_runtime_device", "cpu") if model is not None else "cpu"
     try:
-        query_embedding = model.encode(texts=[query], task="retrieval", prompt_name="query")
+        query_embedding = model.encode(
+            texts=[query],
+            task="retrieval",
+            prompt_name="query",
+            device=runtime_device,
+        )
+    except TypeError:
+        try:
+            query_embedding = model.encode(texts=[query], task="retrieval", prompt_name="query")
+        except ValueError:
+            query_embedding = model.encode(texts=[query], task="retrieval")
     except ValueError:
-        query_embedding = model.encode(texts=[query], task="retrieval")
+        try:
+            query_embedding = model.encode(texts=[query], task="retrieval", device=runtime_device)
+        except TypeError:
+            query_embedding = model.encode(texts=[query], task="retrieval")
     
     # Build filter: includes strategy and optional NTSB number filter
-    filter_dict = get_pinecone_filter(query, strategy)
+    filter_dict = get_pinecone_filter(query, canonical_strategy)
     
     try:
         results = index.query(
@@ -125,11 +182,18 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
         ) from e
 
     # Attach full text from local storage
-    chunks_dict = load_chunks(strategy)
+    chunk_store = load_chunks(canonical_strategy)
+    chunks_dict = chunk_store["by_id"]
+    parent_lookup = chunk_store["parent_lookup"]
     for match in results.matches:
         local = chunks_dict.get(match.id, {})
-        # Parent strategy uses child retrieval with parent-level context for generation.
-        match.metadata["text"] = local.get("parent_text") or local.get("text", "")
+        # Parent-child strategy retrieves child vectors but sends parent context to LLM.
+        if canonical_strategy == "parent_child":
+            parent_id = local.get("parent_id", "")
+            parent_text = parent_lookup.get(parent_id, "") if parent_id else ""
+            match.metadata["text"] = parent_text or local.get("text", "")
+        else:
+            match.metadata["text"] = local.get("text", "")
         # Ensure provenance fields are available even when Pinecone metadata is sparse.
         if "entity_id" in local and not match.metadata.get("entity_id"):
             match.metadata["entity_id"] = local.get("entity_id", "")
@@ -143,6 +207,20 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
             match.metadata["section_title"] = local.get("section_title", "")
         if "report_id" in local and not match.metadata.get("report_id"):
             match.metadata["report_id"] = local.get("report_id", "")
+        if "ntsb_no" in local and not match.metadata.get("ntsb_no"):
+            match.metadata["ntsb_no"] = local.get("ntsb_no", "")
+        if "event_date" in local and not match.metadata.get("event_date"):
+            match.metadata["event_date"] = local.get("event_date", "")
+        if "make" in local and not match.metadata.get("make"):
+            match.metadata["make"] = local.get("make", "")
+        if "model" in local and not match.metadata.get("model"):
+            match.metadata["model"] = local.get("model", "")
+        if "entities" in local and not match.metadata.get("entities"):
+            match.metadata["entities"] = local.get("entities", "")
+        if "aircraft_components" in local and not match.metadata.get("aircraft_components"):
+            match.metadata["aircraft_components"] = local.get("aircraft_components", "")
+        if "numerics" in local and not match.metadata.get("numerics"):
+            match.metadata["numerics"] = local.get("numerics", "")
         if "parent_id" in local:
             match.metadata["parent_id"] = local.get("parent_id", "")
 

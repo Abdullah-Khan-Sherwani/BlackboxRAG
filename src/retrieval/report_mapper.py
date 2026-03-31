@@ -19,7 +19,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Load all available reports from chunks to auto-detect
 def _load_available_reports():
     """Dynamically load all unique NTSB numbers from indexed chunks."""
-    chunk_file = BASE_DIR / "data" / "processed" / "chunks_md_section.json"
+    chunk_file = BASE_DIR / "data" / "processed" / "chunks_md_md_recursive.json"
+    if not chunk_file.exists():
+        chunk_file = BASE_DIR / "data" / "processed" / "chunks_md_parent_child.json"
     if not chunk_file.exists():
         return {}
     
@@ -150,7 +152,7 @@ def detect_report_from_query(query: str) -> str:
     return ""
 
 
-def get_pinecone_filter(query: str, strategy: str = "section") -> dict:
+def get_pinecone_filter(query: str, strategy: str = "md_recursive") -> dict:
     """
     Build a Pinecone metadata filter for a query.
     
