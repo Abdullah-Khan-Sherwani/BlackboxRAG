@@ -321,7 +321,35 @@ def parse_args() -> argparse.Namespace:
         default=0,
         help="Limit markdown processing to the first N files (0 means all files).",
     )
+    parser.add_argument(
+        "--from-prebuilt",
+        action="store_true",
+        help=(
+            "Load chunks from pre-built JSON in data/processed/ instead of re-chunking. "
+            "Skips chunking and provenance generation — uses contextualized_text already in the JSON."
+        ),
+    )
     return parser.parse_args()
+
+
+def load_prebuilt_chunks(strategy: str, mode: str) -> list[dict]:
+    """Load pre-built chunk JSON from data/processed/ without re-chunking."""
+    if mode == "baseline":
+        filename = PROCESSED_DIR / f"chunks_baseline_{strategy}.json"
+    else:
+        filename = PROCESSED_DIR / f"chunks_md_{strategy}.json"
+
+    if not filename.exists():
+        raise FileNotFoundError(
+            f"Pre-built chunk file not found: {filename}\n"
+            "Unzip chunks_md_recursive.zip into data/processed/ first."
+        )
+
+    print(f"Loading pre-built chunks from: {filename}")
+    with filename.open("r", encoding="utf-8") as f:
+        chunks = json.load(f)
+    print(f"Loaded {len(chunks)} chunks.")
+    return chunks
 
 
 def canonical_strategy(strategy: str, mode: str) -> str:
@@ -502,21 +530,35 @@ def embed_chunks(chunks: list[dict], model_name: str, embed_batch_size: int) -> 
     model = AutoModel.from_pretrained(model_name, trust_remote_code=True)
 
     texts = [c.get("contextualized_text", c.get("text", "")) for c in chunks]
-    print(f"Encoding {len(texts)} chunks...")
+    total = len(texts)
+    print(f"Encoding {total} chunks...")
 
     batch_size = max(1, int(embed_batch_size))
     all_vectors: list[np.ndarray] = []
-    for i in range(0, len(texts), batch_size):
+    start_ts = time.time()
+
+    for i in range(0, total, batch_size):
         batch = texts[i : i + batch_size]
         try:
             vec = model.encode(texts=batch, task="retrieval", prompt_name="passage")
         except ValueError:
             vec = model.encode(texts=batch, task="retrieval")
         all_vectors.append(np.asarray(vec, dtype=np.float32))
-        print(f"  Encoded {min(i + batch_size, len(texts))}/{len(texts)}")
+
+        done = min(i + batch_size, total)
+        elapsed = max(time.time() - start_ts, 1e-6)
+        rate = done / elapsed
+        eta_sec = int((total - done) / max(rate, 1e-6))
+        eta_h, eta_m, eta_s = eta_sec // 3600, (eta_sec % 3600) // 60, eta_sec % 60
+        print(
+            f"  Encoded {done}/{total} | elapsed: {elapsed/60:.1f}m "
+            f"| rate: {rate:.1f}/s | ETA: {eta_h:02d}:{eta_m:02d}:{eta_s:02d}",
+            flush=True,
+        )
 
     embeddings = np.concatenate(all_vectors, axis=0)
-    print(f"Embeddings shape: {embeddings.shape}")
+    total_elapsed = time.time() - start_ts
+    print(f"Embeddings shape: {embeddings.shape} | total time: {total_elapsed/60:.1f}m")
     return embeddings
 
 
@@ -618,18 +660,25 @@ def main() -> None:
     args = parse_args()
     strategy = canonical_strategy(args.strategy, mode=args.mode)
 
-    chunks = load_markdown_chunks(strategy, mode=args.mode, max_files=args.max_files)
-    if args.mode == "advanced":
-        chunks = add_provenance_context(
-            chunks=chunks,
-            use_ollama_summary=args.use_ollama_summary,
-            summarizer_model=args.summarizer_model,
-            summary_timeout=args.summary_timeout,
-            ollama_summary_max_chunks=args.ollama_summary_max_chunks,
-        )
-    else:
+    if args.from_prebuilt:
+        chunks = load_prebuilt_chunks(strategy, mode=args.mode)
+        # contextualized_text already baked in — ensure fallback for any missing ones
         for chunk in chunks:
-            chunk["contextualized_text"] = chunk.get("text", "")
+            if not chunk.get("contextualized_text"):
+                chunk["contextualized_text"] = chunk.get("text", "")
+    else:
+        chunks = load_markdown_chunks(strategy, mode=args.mode, max_files=args.max_files)
+        if args.mode == "advanced":
+            chunks = add_provenance_context(
+                chunks=chunks,
+                use_ollama_summary=args.use_ollama_summary,
+                summarizer_model=args.summarizer_model,
+                summary_timeout=args.summary_timeout,
+                ollama_summary_max_chunks=args.ollama_summary_max_chunks,
+            )
+        else:
+            for chunk in chunks:
+                chunk["contextualized_text"] = chunk.get("text", "")
 
     embeddings = embed_chunks(chunks, args.model_name, args.embed_batch_size)
     save_local_artifacts(chunks, embeddings, strategy, mode=args.mode)

@@ -15,10 +15,10 @@ env/
 data/raw/*
 !data/raw/.gitkeep
 
-# (Changed this so your processed data CAN be uploaded for your teammates)
-# Your 150-report sampled CSV and JSON chunks are only ~4-5MB each, perfect for standard Git.
-# However, if your .npz embeddings get bigger than 50-100MB, you might want to uncomment the line below.
-# *.npz
+# Large unzipped chunk files (unzip locally from chunks_md_recursive.zip)
+data/processed/chunks_md_md_recursive.json
+data/processed/chunks_md_parent_child.json
+data/processed/chunks_md_recursive.json
 
 # API Keys and Secrets
 .env
