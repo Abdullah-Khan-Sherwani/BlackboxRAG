@@ -57,38 +57,21 @@ with st.sidebar:
 
     llm_provider_label = st.selectbox(
         "Generator",
-        ["Ollama (Local)", "DeepSeek (NVIDIA API)", "GPT (NVIDIA API)"],
+        ["Ollama (Local)", "DeepSeek (NVIDIA API)"],
         index=0,
         help="Choose which LLM generates the final answer from retrieved chunks.",
     )
-    if "Ollama" in llm_provider_label:
-        llm_provider = "ollama"
-    elif "GPT" in llm_provider_label:
-        llm_provider = "gpt"
-    else:
-        llm_provider = "deepseek"
+    llm_provider = "ollama" if "Ollama" in llm_provider_label else "deepseek"
     ollama_model = st.text_input(
         "Ollama Model",
         value="qwen2.5:32b",
         help="Used only when Generator is set to Ollama (Local).",
     )
 
-    strategies = available_strategies()
-    if not strategies:
-        st.error("No local chunk files were found in data/processed. Build chunks first.")
-        st.stop()
-
-    if "section" in strategies:
-        default_idx = strategies.index("section")
-    elif "recursive" in strategies:
-        default_idx = strategies.index("recursive")
-    else:
-        default_idx = 0
-
     strategy = st.selectbox(
         "Chunking Strategy",
-        strategies,
-        index=default_idx,
+        ["section", "fixed", "recursive", "semantic"],
+        index=0,
         help="Choose which chunking strategy was used for the document index.",
     )
 
@@ -110,11 +93,9 @@ with st.sidebar:
     st.markdown("- Embeddings: Jina v5 (768-dim)")
     if llm_provider == "ollama":
         st.markdown(f"- Generator: {ollama_model} (Ollama local)")
-    elif llm_provider == "gpt":
-        st.markdown("- Generator: GPT-4o 120B (NVIDIA)")
     else:
-        st.markdown("- Generator: DeepSeek V3.1 (NVIDIA)")
-    st.markdown("- Reranker: ms-marco-MiniLM-L-12-v2 (upgraded, better scoring)")
+        st.markdown("- Generator: DeepSeek V3.2 (NVIDIA)")
+    st.markdown("- Reranker: ms-marco-MiniLM-L-6-v2")
 
 
 # -- Main area ----------------------------------------------------------------
@@ -153,11 +134,8 @@ if query:
         # Step 2b: HyDE expansion (optional, LLM API call)
         if use_hyde:
             with st.spinner("Step 2b/4 — Generating HyDE hypothetical snippets..."):
-                hyde_docs = generate_hyde_documents(query, num_docs=2)
+                hyde_docs = generate_hyde_documents(query, num_docs=2, llm_provider=llm_provider, ollama_model=ollama_model)
                 if hyde_docs:
-                    print("[HyDE] Generated hypothetical snippets:")
-                    for i, doc in enumerate(hyde_docs, 1):
-                        print(f"  [{i}] {doc}")
                     queries.extend(hyde_docs)
 
         # Step 3: Semantic + BM25 retrieval for each query variant (increased from 40 to 60)
@@ -206,10 +184,13 @@ if query:
                 st.markdown(f"{i}. {q}")
 
     # HyDE docs (if generated)
-    if hyde_docs:
+    if use_hyde:
         with st.expander("HyDE — Hypothetical snippets used for retrieval"):
-            for i, doc in enumerate(hyde_docs, 1):
-                st.markdown(f"{i}. {doc}")
+            if hyde_docs:
+                for i, doc in enumerate(hyde_docs, 1):
+                    st.markdown(f"**Excerpt {i}:** {doc}")
+            else:
+                st.warning("HyDE generation returned no results (model may have failed or returned empty).")
 
     # Display answer
     st.subheader("Answer")

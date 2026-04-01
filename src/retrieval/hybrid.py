@@ -14,36 +14,15 @@ from src.llm.client import call_eval_llm
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-STRATEGIES = ["md_recursive", "parent_child", "fixed", "recursive", "semantic"]
+STRATEGIES = ["section", "fixed", "recursive", "semantic"]
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
-def _canonical_strategy(strategy: str) -> str:
-    if strategy == "md_recursive":
-        return "md_recursive"
-    if strategy in {"parent", "parent_child"}:
-        return "parent_child"
-    return strategy
-
-
-def _chunks_file_for_strategy(strategy: str) -> str:
-    s = _canonical_strategy(strategy)
-    if s == "section":
-        return "chunks_md_section.json"
-    if s in {"md_recursive", "parent_child"}:
-        return f"chunks_md_{s}.json"
-    if s in {"fixed", "recursive", "semantic"}:
-        baseline_name = f"chunks_baseline_{s}.json"
-        baseline_path = os.path.join(BASE_DIR, "data", "processed", baseline_name)
-        if os.path.exists(baseline_path):
-            return baseline_name
-
-        legacy = {
-            "fixed": "chunks_fixed.json",
-            "recursive": "chunks_recursive.json",
-            "semantic": "chunks_semantic.json",
-        }
-        return legacy[s]
-    return f"chunks_md_{s}.json"
+CHUNK_FILE_BY_STRATEGY = {
+    "fixed": "chunks_fixed.json",
+    "recursive": "chunks_recursive.json",
+    "semantic": "chunks_semantic.json",
+    "section": "chunks_md_section.json",
+}
 
 
 def build_bm25_index(strategy):
@@ -51,7 +30,7 @@ def build_bm25_index(strategy):
 
     Returns (BM25Okapi, list[dict]) — the index and the original chunk dicts.
     """
-    filename = _chunks_file_for_strategy(strategy)
+    filename = CHUNK_FILE_BY_STRATEGY.get(strategy, f"chunks_{strategy}.json")
     path = os.path.join(BASE_DIR, "data", "processed", filename)
     with open(path, "r", encoding="utf-8") as f:
         chunks = json.load(f)
@@ -397,7 +376,7 @@ Original question: {query}
         return []
 
 
-def generate_hyde_documents(query: str, num_docs: int = 3) -> list[str]:
+def generate_hyde_documents(query: str, num_docs: int = 3, llm_provider: str = "nvidia", ollama_model: str = "qwen2.5:32b") -> list[str]:
     """Generate hypothetical answer-like excerpts for HyDE retrieval expansion."""
     hyde_prompt = f"""Given this question about aviation accidents: "{query}"
 
@@ -408,7 +387,15 @@ Format each as a separate paragraph starting with "Excerpt {{i}}:"
 """
 
     try:
-        response = call_eval_llm(hyde_prompt, model="deepseek")
+        if llm_provider == "ollama":
+            from src.llm.ollama_client import call_ollama
+            response = call_ollama(hyde_prompt, model=ollama_model)
+        elif llm_provider == "gpt":
+            from src.llm.client import call_llm, MODEL_GPT
+            response = call_llm(hyde_prompt, model=MODEL_GPT)
+        else:
+            response = call_eval_llm(hyde_prompt)
+
         excerpts = []
         for line in response.split("\n"):
             if "Excerpt" in line and ":" in line:
@@ -416,7 +403,8 @@ Format each as a separate paragraph starting with "Excerpt {{i}}:"
                 if excerpt:
                     excerpts.append(excerpt)
         return excerpts[:num_docs]
-    except Exception:
+    except Exception as e:
+        print(f"[HyDE] generation failed: {e}")
         return []
 
 
