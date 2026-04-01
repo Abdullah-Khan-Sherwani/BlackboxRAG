@@ -69,6 +69,7 @@ def bm25_retrieve(query, bm25, chunks, top_k=20):
     for idx in top_indices:
         chunk = dict(chunks[idx])
         chunk["score"] = float(scores[idx])
+        chunk["retrieval_strategy"] = "bm25"
         results.append(chunk)
     return results
 
@@ -85,13 +86,25 @@ def rrf_fuse_lists(result_lists, k=60):
         for rank, item in enumerate(ranked_list):
             doc_id = _get_id(item)
             scores[doc_id] = scores.get(doc_id, 0) + 1.0 / (k + rank + 1)
+            item_strategy = _strategy_set(item)
             if doc_id not in docs:
                 docs[doc_id] = _to_dict(item)
+                docs[doc_id]["retrieval_strategies"] = sorted(item_strategy)
+            else:
+                existing = set(docs[doc_id].get("retrieval_strategies", []))
+                docs[doc_id]["retrieval_strategies"] = sorted(existing | item_strategy)
 
     fused = []
     for doc_id, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
         doc = docs[doc_id]
         doc["score"] = score
+        strategies = doc.get("retrieval_strategies", [])
+        if len(strategies) == 1:
+            doc["retrieval_strategy"] = strategies[0]
+        elif len(strategies) > 1:
+            doc["retrieval_strategy"] = "+".join(strategies)
+        else:
+            doc["retrieval_strategy"] = "unknown"
         fused.append(doc)
 
     return fused
@@ -384,6 +397,29 @@ Original question: {query}
         return []
 
 
+def generate_hyde_documents(query: str, num_docs: int = 3) -> list[str]:
+    """Generate hypothetical answer-like excerpts for HyDE retrieval expansion."""
+    hyde_prompt = f"""Given this question about aviation accidents: "{query}"
+
+Write {num_docs} short, specific hypothetical document excerpts that would answer this question.
+Each excerpt should be from an NTSB accident report and contain concrete details/numbers.
+
+Format each as a separate paragraph starting with "Excerpt {{i}}:"
+"""
+
+    try:
+        response = call_eval_llm(hyde_prompt, model="deepseek")
+        excerpts = []
+        for line in response.split("\n"):
+            if "Excerpt" in line and ":" in line:
+                excerpt = line.split(":", 1)[1].strip()
+                if excerpt:
+                    excerpts.append(excerpt)
+        return excerpts[:num_docs]
+    except Exception:
+        return []
+
+
 def _chunk_maps(chunks):
     """Build quick lookup maps for neighbor context enrichment."""
     by_doc = {}
@@ -442,6 +478,7 @@ def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
                     enable_query_expansion=True,
                     neighbor_window=2,
                     use_multi_query=True,
+                    use_hyde=False,
                     min_unique_reports=3,
                     return_debug=False):
     """Full hybrid retrieval pipeline: semantic + BM25 → RRF → rerank.
@@ -460,6 +497,7 @@ def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
         enable_query_expansion: Whether to expand queries
         neighbor_window: Context window for enrichment (increased from 1→2)
         use_multi_query: Whether to use multi-query expansion (replaces use_hyde)
+        use_hyde: Whether to add HyDE hypothetical excerpts as retrieval queries
         min_unique_reports: Minimum unique NTSB reports to include
         return_debug: Return debug info with results
 
@@ -468,6 +506,7 @@ def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
     """
     debug = {
         "multi_queries": None,
+        "hyde_docs": [],
         "query_variants": [],
         "dynamic_weighting": {
             "dominant_entity": "",
@@ -483,6 +522,15 @@ def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
         if multi_queries:
             debug["multi_queries"] = multi_queries
             queries.extend(multi_queries)
+
+    if use_hyde:
+        hyde_docs = generate_hyde_documents(query, num_docs=2)
+        if hyde_docs:
+            debug["hyde_docs"] = hyde_docs
+            print("[HyDE] Generated hypothetical snippets:")
+            for i, doc in enumerate(hyde_docs, 1):
+                print(f"  [{i}] {doc}")
+            queries.extend(hyde_docs)
 
     if enable_query_expansion and len(queries) < 3:
         queries.extend(expand_query_variants(query))
@@ -539,6 +587,22 @@ def _to_dict(item):
         d["score"] = float(item.score)
         return d
     return dict(item)
+
+
+def _strategy_set(item):
+    """Extract retrieval source(s) from a Pinecone match or dict item."""
+    if hasattr(item, "metadata"):
+        value = item.metadata.get("retrieval_strategy", "semantic")
+    else:
+        value = item.get("retrieval_strategy", "bm25")
+
+    if isinstance(value, str):
+        parts = [p.strip() for p in value.split("+") if p.strip()]
+        if parts:
+            return set(parts)
+    if isinstance(value, list):
+        return {str(v).strip() for v in value if str(v).strip()}
+    return set()
 
 
 def main():

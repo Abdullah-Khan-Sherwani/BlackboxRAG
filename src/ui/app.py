@@ -15,7 +15,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspa
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
-    expand_query_variants, generate_multi_queries,
+    expand_query_variants, generate_multi_queries, generate_hyde_documents,
     bm25_retrieve, rrf_fuse_lists, rerank, enrich_with_neighbors,
 )
 from src.generation.generate import generate_answer
@@ -103,6 +103,7 @@ with st.sidebar:
 
     run_eval = st.checkbox("Compute faithfulness & relevancy scores", value=True)
     use_multi_query = st.checkbox("Use Multi-Query expansion (slower, better recall for specific questions)", value=False)
+    use_hyde = st.checkbox("Use HyDE expansion (slower, generates hypothetical retrieval snippets)", value=False)
 
     st.divider()
     st.markdown("**Model info**")
@@ -132,6 +133,7 @@ if query:
 
     # Retrieve
     multi_query_variants = None
+    hyde_docs = None
     if "Hybrid" in mode:
         reranker = get_reranker() if "Rerank" in mode else None
         bm25, chunks = get_bm25(strategy)
@@ -147,6 +149,16 @@ if query:
                 multi_query_variants = generate_multi_queries(query, model=llm_provider)
                 if multi_query_variants:
                     queries.extend(multi_query_variants)
+
+        # Step 2b: HyDE expansion (optional, LLM API call)
+        if use_hyde:
+            with st.spinner("Step 2b/4 — Generating HyDE hypothetical snippets..."):
+                hyde_docs = generate_hyde_documents(query, num_docs=2)
+                if hyde_docs:
+                    print("[HyDE] Generated hypothetical snippets:")
+                    for i, doc in enumerate(hyde_docs, 1):
+                        print(f"  [{i}] {doc}")
+                    queries.extend(hyde_docs)
 
         # Step 3: Semantic + BM25 retrieval for each query variant (increased from 40 to 60)
         ranked_lists = []
@@ -193,6 +205,12 @@ if query:
             for i, q in enumerate(multi_query_variants, 1):
                 st.markdown(f"{i}. {q}")
 
+    # HyDE docs (if generated)
+    if hyde_docs:
+        with st.expander("HyDE — Hypothetical snippets used for retrieval"):
+            for i, doc in enumerate(hyde_docs, 1):
+                st.markdown(f"{i}. {doc}")
+
     # Display answer
     st.subheader("Answer")
     st.markdown(answer)
@@ -235,6 +253,7 @@ if query:
 
         report_id = meta.get("ntsb_no") or meta.get("report_id", "N/A")
         section = meta.get("section_title", "")
+        retrieval_source = meta.get("retrieval_strategy", "semantic")
         label = f"[{i}] {report_id}"
         if section:
             label += f" — {section}"
@@ -251,5 +270,6 @@ if query:
                     f"**Phase:** {meta.get('phase_of_flight', 'N/A')} | "
                     f"**Weather:** {meta.get('weather', 'N/A')}"
                 )
+                st.markdown(f"**Retrieval:** {retrieval_source}")
             st.divider()
             st.text(meta.get("text", ""))

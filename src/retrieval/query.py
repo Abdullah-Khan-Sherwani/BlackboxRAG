@@ -189,6 +189,8 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
     parent_lookup = chunk_store["parent_lookup"]
     for match in results.matches:
         local = chunks_dict.get(match.id, {})
+        # Provenance marker for semantic retrieval path.
+        match.metadata["retrieval_strategy"] = "semantic"
         # Parent-child strategy retrieves child vectors but sends parent context to LLM.
         if canonical_strategy == "parent_child":
             parent_id = local.get("parent_id", "")
