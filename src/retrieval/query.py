@@ -16,7 +16,7 @@ INDEX_NAME = "ntsb-rag"
 MODEL_NAME = "jinaai/jina-embeddings-v5-text-nano"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ALL_STRATEGIES = ["md_recursive", "parent_child", "fixed", "recursive", "semantic", "parent"]
+ALL_STRATEGIES = ["section", "md_recursive", "parent_child", "fixed", "recursive", "semantic", "parent"]
 
 SAMPLE_QUERIES = [
     "What are common causes of engine failure during takeoff?",
@@ -30,7 +30,7 @@ _chunks_cache = {}
 
 def _canonical_strategy(strategy: str) -> str:
     """Map legacy names to the canonical markdown strategies."""
-    if strategy in {"section", "md_recursive"}:
+    if strategy == "md_recursive":
         return "md_recursive"
     if strategy in {"parent", "parent_child"}:
         return "parent_child"
@@ -40,6 +40,8 @@ def _canonical_strategy(strategy: str) -> str:
 def _chunks_file_for_strategy(strategy: str) -> str:
     """Resolve local chunk artifact name across advanced and baseline modes."""
     s = _canonical_strategy(strategy)
+    if s == "section":
+        return "chunks_md_section.json"
     if s in {"md_recursive", "parent_child"}:
         return f"chunks_md_{s}.json"
     if s in {"fixed", "recursive", "semantic"}:

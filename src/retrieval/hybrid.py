@@ -18,7 +18,7 @@ STRATEGIES = ["md_recursive", "parent_child", "fixed", "recursive", "semantic"]
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 def _canonical_strategy(strategy: str) -> str:
-    if strategy in {"section", "md_recursive"}:
+    if strategy == "md_recursive":
         return "md_recursive"
     if strategy in {"parent", "parent_child"}:
         return "parent_child"
@@ -27,6 +27,8 @@ def _canonical_strategy(strategy: str) -> str:
 
 def _chunks_file_for_strategy(strategy: str) -> str:
     s = _canonical_strategy(strategy)
+    if s == "section":
+        return "chunks_md_section.json"
     if s in {"md_recursive", "parent_child"}:
         return f"chunks_md_{s}.json"
     if s in {"fixed", "recursive", "semantic"}:
