@@ -16,6 +16,7 @@ from src.retrieval.query import load_model, init_pinecone, retrieve, available_s
 from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
     expand_query_variants, generate_multi_queries, generate_hyde_documents,
+    generate_knowledge_doc,
     bm25_retrieve, rrf_fuse_lists, rerank, enrich_with_neighbors,
 )
 from src.generation.generate import generate_answer
@@ -57,21 +58,38 @@ with st.sidebar:
 
     llm_provider_label = st.selectbox(
         "Generator",
-        ["Ollama (Local)", "DeepSeek (NVIDIA API)"],
+        ["Ollama (Local)", "DeepSeek (NVIDIA API)", "GPT (NVIDIA API)"],
         index=0,
         help="Choose which LLM generates the final answer from retrieved chunks.",
     )
-    llm_provider = "ollama" if "Ollama" in llm_provider_label else "deepseek"
+    if "Ollama" in llm_provider_label:
+        llm_provider = "ollama"
+    elif "GPT" in llm_provider_label:
+        llm_provider = "gpt"
+    else:
+        llm_provider = "deepseek"
     ollama_model = st.text_input(
         "Ollama Model",
         value="qwen2.5:32b",
         help="Used only when Generator is set to Ollama (Local).",
     )
 
+    strategies = available_strategies()
+    if not strategies:
+        st.error("No local chunk files were found in data/processed. Build chunks first.")
+        st.stop()
+
+    if "section" in strategies:
+        default_idx = strategies.index("section")
+    elif "recursive" in strategies:
+        default_idx = strategies.index("recursive")
+    else:
+        default_idx = 0
+
     strategy = st.selectbox(
         "Chunking Strategy",
-        ["section", "fixed", "recursive", "semantic"],
-        index=0,
+        strategies,
+        index=default_idx,
         help="Choose which chunking strategy was used for the document index.",
     )
 
@@ -87,14 +105,17 @@ with st.sidebar:
     run_eval = st.checkbox("Compute faithfulness & relevancy scores", value=True)
     use_multi_query = st.checkbox("Use Multi-Query expansion (slower, better recall for specific questions)", value=False)
     use_hyde = st.checkbox("Use HyDE expansion (slower, generates hypothetical retrieval snippets)", value=False)
+    use_knowledge_doc = st.checkbox("Use LLM Knowledge augmentation (semantic-only)", value=False)
 
     st.divider()
     st.markdown("**Model info**")
     st.markdown("- Embeddings: Jina v5 (768-dim)")
     if llm_provider == "ollama":
         st.markdown(f"- Generator: {ollama_model} (Ollama local)")
+    elif llm_provider == "gpt":
+        st.markdown("- Generator: GPT-4o 120B (NVIDIA)")
     else:
-        st.markdown("- Generator: DeepSeek V3.2 (NVIDIA)")
+        st.markdown("- Generator: DeepSeek V3.1 (NVIDIA)")
     st.markdown("- Reranker: ms-marco-MiniLM-L-6-v2")
 
 
@@ -115,6 +136,7 @@ if query:
     # Retrieve
     multi_query_variants = None
     hyde_docs = None
+    knowledge_doc = None
     if "Hybrid" in mode:
         reranker = get_reranker() if "Rerank" in mode else None
         bm25, chunks = get_bm25(strategy)
@@ -138,12 +160,22 @@ if query:
                 if hyde_docs:
                     queries.extend(hyde_docs)
 
+        # Step 2c: LLM knowledge augmentation (semantic-only, separate from HyDE)
+        if use_knowledge_doc:
+            with st.spinner("Step 2c/4 — Generating LLM knowledge answer..."):
+                knowledge_doc = generate_knowledge_doc(query, llm_provider=llm_provider, ollama_model=ollama_model)
+
         # Step 3: Semantic + BM25 retrieval for each query variant (increased from 40 to 60)
         ranked_lists = []
         for i, q in enumerate(queries, 1):
             with st.spinner(f"Step 3/4 — Searching (variant {i}/{len(queries)})..."):
                 ranked_lists.append(retrieve(q, strategy, top_k=60, model=jina_model, index=index))
                 ranked_lists.append(bm25_retrieve(q, bm25, chunks, top_k=60))
+
+        # Knowledge doc — semantic retrieval only (no BM25)
+        if knowledge_doc:
+            with st.spinner("Step 3/4 — Knowledge-augmented semantic search..."):
+                ranked_lists.append(retrieve(knowledge_doc, strategy, top_k=60, model=jina_model, index=index))
 
         # Step 4: RRF fusion + optional cross-encoder rerank
         with st.spinner(f"Step 4/4 — Fusing & {'reranking' if reranker else 'selecting'} candidates..."):
@@ -191,6 +223,14 @@ if query:
                     st.markdown(f"**Excerpt {i}:** {doc}")
             else:
                 st.warning("HyDE generation returned no results (model may have failed or returned empty).")
+
+    # LLM knowledge answer (if generated)
+    if use_knowledge_doc:
+        with st.expander("LLM Knowledge — Model's own answer used for semantic retrieval"):
+            if knowledge_doc:
+                st.markdown(knowledge_doc)
+            else:
+                st.warning("Knowledge doc generation returned no results.")
 
     # Display answer
     st.subheader("Answer")

@@ -408,6 +408,37 @@ Format each as a separate paragraph starting with "Excerpt {{i}}:"
         return []
 
 
+def generate_knowledge_doc(query: str, llm_provider: str = "nvidia", ollama_model: str = "qwen2.5:32b") -> str:
+    """Generate a direct answer using the LLM's own aviation knowledge.
+
+    The answer is used only for semantic retrieval — not BM25 — to pull the
+    search into answer-space and surface chunks that match the answer rather
+    than the question phrasing.
+    """
+    prompt = f"""You are an aviation accident investigator writing a factual narrative based on your knowledge of NTSB investigations from 1996 to 2025.
+
+Answer the following question by writing a concise investigative narrative in the style of an NTSB report finding.
+Use precise technical language, third-person past tense, and include specific details such as flight hours, system states,
+crew actions, meteorological conditions, or causal factors as appropriate. Do not hedge or qualify — write as a definitive finding.
+Only draw on accidents and events from NTSB reports between 1996 and 2025.
+
+Question: {query}
+"""
+    try:
+        if llm_provider == "ollama":
+            from src.llm.ollama_client import call_ollama
+            response = call_ollama(prompt, model=ollama_model)
+        elif llm_provider == "gpt":
+            from src.llm.client import call_llm, MODEL_GPT
+            response = call_llm(prompt, model=MODEL_GPT)
+        else:
+            response = call_eval_llm(prompt)
+        return response.strip()
+    except Exception as e:
+        print(f"[KnowledgeDoc] generation failed: {e}")
+        return ""
+
+
 def _chunk_maps(chunks):
     """Build quick lookup maps for neighbor context enrichment."""
     by_doc = {}
