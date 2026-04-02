@@ -437,6 +437,17 @@ def chunk_markdown_baseline_recursive(md_file_path: str) -> list[dict]:
     return chunks
 
 
+_cached_hf_embeddings = None
+
+
+def _get_hf_embeddings():
+    """Return a cached HuggingFaceEmbeddings instance (loaded once)."""
+    global _cached_hf_embeddings
+    if _cached_hf_embeddings is None:
+        _cached_hf_embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    return _cached_hf_embeddings
+
+
 def chunk_markdown_baseline_semantic(md_file_path: str) -> list[dict]:
     """Baseline semantic chunking constrained to 512-1024 tokens."""
     with open(md_file_path, "r", encoding="utf-8") as f:
@@ -445,7 +456,7 @@ def chunk_markdown_baseline_semantic(md_file_path: str) -> list[dict]:
     report_meta = _baseline_report_meta(md_file_path, content)
     report_id = report_meta["report_id"]
 
-    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+    embeddings = _get_hf_embeddings()
     semantic_chunker = SemanticChunker(embeddings, breakpoint_threshold_type="percentile")
 
     try:
