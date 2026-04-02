@@ -79,7 +79,9 @@ with st.sidebar:
         st.error("No local chunk files were found in data/processed. Build chunks first.")
         st.stop()
 
-    if "section" in strategies:
+    if "md_recursive" in strategies:
+        default_idx = strategies.index("md_recursive")
+    elif "section" in strategies:
         default_idx = strategies.index("section")
     elif "recursive" in strategies:
         default_idx = strategies.index("recursive")
@@ -258,7 +260,7 @@ if query:
             st.metric("Relevancy", f"{rel_score:.1%}")
 
             if rel_alternates:
-                with st.expander("Alternate query phrasings"):
+                with st.expander("Questions generated from answer"):
                     for alt in rel_alternates:
                         st.markdown(f"- {alt}")
 

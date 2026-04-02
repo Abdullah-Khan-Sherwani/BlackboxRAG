@@ -8,6 +8,7 @@ Uses DeepSeek V3.2 as LLM-as-judge for both metrics.
 """
 import json
 import os
+import re
 import sys
 import hashlib
 
@@ -44,6 +45,60 @@ EVAL_QUERIES = [
     "How do crosswind conditions affect landing accident rates?",
     "What role does air traffic control play in preventing mid-air collisions?",
     "Describe common factors in accidents during instrument approaches",
+]
+
+
+MANUAL_COMPARE_QA = [
+    {
+        "id": "Q1",
+        "question": "Based strictly on the NTSB Aviation Accident Report AAR-18/01 for American Airlines Flight 383, provide the exact chronological telemetry from the Flight Data Recorder (FDR): Exactly how many seconds elapsed between the start of the right engine failure and the time the spar valve was finally closed to cut off the fuel supply?",
+        "reference_answer": "Answer: Exactly 164 seconds elapsed between the start of the right engine failure and the closure of the spar valve.",
+    },
+    {
+        "id": "Q2",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-14/01 for Asiana Airlines Flight 214, detail the survival and evacuation factors: When the tail section of the aircraft struck the seawall and separated from the fuselage, two flight attendants seated in the aft cabin were ejected onto the runway and survived. What were the exact jumpseat designators for these two flight attendants?",
+        "reference_answer": "The two ejected flight attendants were seated in jumpseats 4L and 4R.",
+    },
+    {
+        "id": "Q3",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-14/01 for Asiana Airlines Flight 214, one of the fatally injured passengers was located outside the aircraft and was struck by two ARFF vehicles. According to the NTSB, what specific substance visually obscured this passenger from the view of the ARFF drivers?",
+        "reference_answer": "The passenger was visually obscured by Aqueous Film-Forming Foam (AFFF), also known as firefighting foam.",
+    },
+    {
+        "id": "Q4",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-14/01 for Asiana Airlines Flight 214, exactly how many flight hours of experience did the PM have acting specifically as an Instructor Pilot in the Boeing 777 prior to this accident flight?",
+        "reference_answer": "The PM had 0 hours of experience acting specifically as an Instructor Pilot in the Boeing 777 prior to the accident.",
+    },
+    {
+        "id": "Q5",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-14/01 for Asiana Airlines Flight 214, exactly how many total flight hours did the PF have in the Boeing 777 prior to the accident flight?",
+        "reference_answer": "The PF had a total of 43 hours in the Boeing 777 prior to the accident flight.",
+    },
+    {
+        "id": "Q6",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-00/03 for Trans World Airlines (TWA) Flight 800, wreckage was recovered from three debris fields (red, yellow, and green zones). Which field was the smallest, was contained within the red zone on its northeastern side, and what were the exact fuselage station markers for the wreckage it contained?",
+        "reference_answer": "The Yellow Zone was the smallest, and it contained wreckage from STA 840 to STA 1000.",
+    },
+    {
+        "id": "Q7",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-01/01 for United Airlines Flight 585, the captain had 9,902 total flight hours with United. Exactly how many flight hours and minutes of PIC experience did he have specifically in the Boeing 737-200 prior to the accident flight?",
+        "reference_answer": "The captain had 167 hours and 17 minutes of PIC experience specifically in the Boeing 737-200.",
+    },
+    {
+        "id": "Q8",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-01/02 for American Airlines Flight 1420, exactly how many feet to the left of the centerline were the main landing gear tire marks located at the end of runway 4R?",
+        "reference_answer": "The tire marks were located 14 feet to the left of the runway centerline at the end of the runway surface.",
+    },
+    {
+        "id": "Q9",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-00/01 for Korean Air Flight 801, what was the exact diameter of the severed fuel oil pipeline, and approximately how many gallons of oil were spilled?",
+        "reference_answer": "The pipeline was 12 inches in diameter, and approximately 1,500 gallons of oil were spilled.",
+    },
+    {
+        "id": "Q10",
+        "question": "Based strictly on the NTSB Aircraft Accident Report AAR-00/02 for Federal Express Flight 14, according to the ARFF fire crew chief, exactly how many minutes elapsed from the Condition One alarm until five ARFF vehicles were actively engaged in fire suppression at the accident site?",
+        "reference_answer": "Exactly 4 minutes elapsed from the time of the alarm until five ARFF vehicles were actively engaged in fire suppression.",
+    },
 ]
 
 
@@ -243,28 +298,39 @@ Example: ["alt 1", "alt 2", "alt 3"]"""
         return _parse_json(call_llm(prompt))
     except (json.JSONDecodeError, ValueError):
         return []
+def _extract_final_answer(answer):
+    """Extract only the Answer section from a structured LLM response.
+
+    The generation prompt enforces an 'Answer:' section at the end.
+    Falls back to the full answer if the section is not found.
+    """
+    match = re.search(r"(?i)answer\s*[:\-]?\s*(.*)", answer, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return answer
+
+
 def compute_relevancy(query, answer, jina_model, cache=None):
-    """Compute relevancy via cosine similarity between original query and
-    alternate queries generated from the answer.
+    """Compute relevancy by generating 3 questions from the final answer, then
+    computing cosine similarity between those questions and the original query.
 
     Returns (score, alternates) where score is mean cosine similarity (0-1).
     """
-    prompt = f"""You are an aviation safety research assistant.
-Generate {3} alternative phrasings of the ORIGINAL question, informed by the answer content.
+    final_answer = _extract_final_answer(answer)
 
-===Original Question===
-{query}
+    prompt = f"""You are an aviation safety research assistant.
+Given the answer below, generate exactly 3 questions that this answer directly addresses.
 
 ===Answer===
-{answer}
+{final_answer}
 
 ===Return Requirements===
-1. Output JSON array of exactly 3 strings.
-2. Preserve the same information need as the original question.
-3. Do not add details not implied by the original question.
-4. No text outside JSON.
+1. Output a JSON array of exactly 3 strings.
+2. Each string must be a question that the answer above can answer.
+3. Use aviation domain terminology where appropriate.
+4. No text outside the JSON array.
 
-Example: ["alt 1", "alt 2", "alt 3"]"""
+Example: ["question 1?", "question 2?", "question 3?"]"""
     try:
         raw_alternates = _parse_json(_cached_llm(prompt, cache=cache))
     except (json.JSONDecodeError, ValueError):
@@ -488,6 +554,88 @@ def summarize(results):
     return summary
 
 
+def run_manual_compare_questions(
+    qa_items,
+    strategies,
+    jina_model,
+    index,
+    bm25_cache,
+    reranker,
+    top_k=10,
+    modes=("semantic", "hybrid"),
+    output_path=None,
+    use_hyde=False,
+):
+    """Run fixed manual QA set and print RAG answer vs reference answer."""
+    rows = []
+
+    for mode in modes:
+        for strategy in strategies:
+            if mode == "hybrid" and strategy not in bm25_cache:
+                print(f"Skipping manual compare for [hybrid/{strategy}] because BM25 index is unavailable.")
+                continue
+
+            print(f"\n{'='*80}")
+            print(f"MANUAL COMPARE | mode={mode} | strategy={strategy}")
+            print("=" * 80)
+
+            for item in qa_items:
+                qid = item["id"]
+                query = item["question"]
+                reference_answer = item["reference_answer"]
+
+                try:
+                    if mode == "hybrid":
+                        bm25, chunks = bm25_cache[strategy]
+                        matches = hybrid_retrieve(
+                            query,
+                            strategy,
+                            top_k=top_k,
+                            model=jina_model,
+                            index=index,
+                            bm25=bm25,
+                            chunks=chunks,
+                            reranker=reranker,
+                            use_hyde=use_hyde,
+                        )
+                    else:
+                        matches = retrieve(query, strategy, top_k=top_k, model=jina_model, index=index)
+                except Exception as e:
+                    matches = []
+                    print(f"{qid} retrieval failed [{mode}/{strategy}]: {e}")
+
+                try:
+                    rag_answer = generate_answer(query, matches)
+                except Exception as e:
+                    rag_answer = f"Generation failed: {e}"
+
+                print(f"\n{qid}: {query}")
+                print("RAG_ANSWER:")
+                print(rag_answer)
+                print("REFERENCE_ANSWER:")
+                print(reference_answer)
+                print("-" * 80)
+
+                rows.append(
+                    {
+                        "question_id": qid,
+                        "question": query,
+                        "mode": mode,
+                        "strategy": strategy,
+                        "rag_answer": rag_answer,
+                        "reference_answer": reference_answer,
+                        "num_chunks": len(matches),
+                    }
+                )
+
+    if output_path:
+        os.makedirs(os.path.dirname(output_path), exist_ok=True)
+        pd.DataFrame(rows).to_csv(output_path, index=False)
+        print(f"\nManual comparison results saved to {output_path}")
+
+    return rows
+
+
 def main():
     import argparse
     parser = argparse.ArgumentParser(description="Run RAG evaluation")
@@ -513,6 +661,17 @@ def main():
                         help="Enable HyDE in hybrid retrieval (better recall, slower)")
     parser.add_argument("--allow-bm25-fallback", action="store_true",
                         help="If Pinecone retrieval fails, fall back to BM25 so evaluation can continue")
+    parser.add_argument("--manual-qa", action="store_true",
+                        help="Run fixed 10-question manual comparison set")
+    parser.add_argument("--manual-qa-only", action="store_true",
+                        help="Run only manual QA compare and skip standard evaluation")
+    parser.add_argument("--manual-qa-modes", choices=["semantic", "hybrid", "both"], default="both",
+                        help="Retrieval modes for manual QA compare")
+    parser.add_argument("--manual-qa-top-k", type=int, default=10,
+                        help="Top-k for manual QA compare")
+    parser.add_argument("--manual-qa-output", type=str,
+                        default=os.path.join(BASE_DIR, "data", "manual_compare_results.csv"),
+                        help="CSV path for manual QA compare output")
     args = parser.parse_args()
 
     if args.eval_llm_provider:
@@ -549,11 +708,37 @@ def main():
     bm25_cache = {}
     for s in strategies:
         print(f"Building BM25 index for {s}...")
-        bm25_cache[s] = build_bm25_index(s)
+        try:
+            bm25_cache[s] = build_bm25_index(s)
+        except FileNotFoundError as e:
+            print(f"  Skipping BM25 for {s}: {e}")
+
+    semantic_strategies = list(strategies)
+    hybrid_strategies = [s for s in strategies if s in bm25_cache]
+    if not hybrid_strategies:
+        print("Warning: No strategies have BM25 artifacts; hybrid evaluation will be skipped.")
+
+    if args.manual_qa:
+        manual_modes = ["semantic", "hybrid"] if args.manual_qa_modes == "both" else [args.manual_qa_modes]
+        run_manual_compare_questions(
+            qa_items=MANUAL_COMPARE_QA,
+            strategies=strategies,
+            jina_model=jina_model,
+            index=index,
+            bm25_cache=bm25_cache,
+            reranker=reranker,
+            top_k=args.manual_qa_top_k,
+            modes=manual_modes,
+            output_path=args.manual_qa_output,
+            use_hyde=args.use_hyde,
+        )
+        if args.manual_qa_only:
+            print("\nManual QA compare complete.")
+            return
 
     print("\n--- Semantic-only evaluation ---")
     sem_results = run_evaluation(
-        eval_queries, strategies, jina_model, index, mode="semantic",
+        eval_queries, semantic_strategies, jina_model, index, mode="semantic",
         bm25_cache=bm25_cache,
         output_path=output_path,
         top_k=top_k,
@@ -564,17 +749,20 @@ def main():
     )
 
     print("\n--- Hybrid evaluation ---")
-    hyb_results = run_evaluation(
-        eval_queries, strategies, jina_model, index, mode="hybrid",
-        bm25_cache=bm25_cache, reranker=reranker,
-        output_path=output_path,
-        top_k=top_k,
-        compute_faith=not args.skip_faithfulness,
-        compute_rel=not args.skip_relevancy,
-        cache=cache,
-        use_hyde=args.use_hyde,
-        allow_bm25_fallback=args.allow_bm25_fallback or args.fast,
-    )
+    if hybrid_strategies:
+        hyb_results = run_evaluation(
+            eval_queries, hybrid_strategies, jina_model, index, mode="hybrid",
+            bm25_cache=bm25_cache, reranker=reranker,
+            output_path=output_path,
+            top_k=top_k,
+            compute_faith=not args.skip_faithfulness,
+            compute_rel=not args.skip_relevancy,
+            cache=cache,
+            use_hyde=args.use_hyde,
+            allow_bm25_fallback=args.allow_bm25_fallback or args.fast,
+        )
+    else:
+        hyb_results = []
 
     # Print summary from the full CSV (includes resumed + new results)
     if os.path.exists(output_path):

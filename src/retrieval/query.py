@@ -42,8 +42,10 @@ def _chunks_file_for_strategy(strategy: str) -> str:
     s = _canonical_strategy(strategy)
     if s == "section":
         return "chunks_md_section.json"
-    if s in {"md_recursive", "parent_child"}:
-        return f"chunks_md_{s}.json"
+    if s == "md_recursive":
+        return "chunks_md_md_recursive.json"
+    if s == "parent_child":
+        return "chunks_md_parent_child.json"
     if s in {"fixed", "recursive", "semantic"}:
         baseline_name = f"chunks_baseline_{s}.json"
         baseline_path = os.path.join(BASE_DIR, "data", "processed", baseline_name)
@@ -60,15 +62,38 @@ def _chunks_file_for_strategy(strategy: str) -> str:
     return f"chunks_md_{s}.json"
 
 
+def _resolve_chunks_path(filename: str) -> str:
+    """Resolve chunk path across current and nested legacy folder layouts."""
+    base = os.path.join(BASE_DIR, "data", "processed")
+    candidates = [
+        os.path.join(base, filename),
+        os.path.join(base, "chunks_md_recursive", filename),
+    ]
+
+    # Fallback aliases when naming changed across experiments.
+    alias_map = {
+        "chunks_md_md_recursive.json": ["chunks_md_recursive.json"],
+        "chunks_md_parent_child.json": ["chunks_parent_child.json", "chunks_parent.json"],
+    }
+    for alias in alias_map.get(filename, []):
+        candidates.append(os.path.join(base, alias))
+        candidates.append(os.path.join(base, "chunks_md_recursive", alias))
+
+    for path in candidates:
+        if os.path.exists(path):
+            return path
+    return ""
+
+
 def load_chunks(strategy):
     """Load and cache the local chunks JSON for a strategy."""
     strategy = _canonical_strategy(strategy)
     if strategy not in _chunks_cache:
         filename = _chunks_file_for_strategy(strategy)
-        path = os.path.join(BASE_DIR, "data", "processed", filename)
+        path = _resolve_chunks_path(filename)
         if not os.path.exists(path):
             raise FileNotFoundError(
-                f"Chunks file not found for strategy '{strategy}': {path}"
+                f"Chunks file not found for strategy '{strategy}' (requested '{filename}')"
             )
         with open(path, "r", encoding="utf-8") as f:
             chunks = json.load(f)
@@ -88,7 +113,7 @@ def available_strategies():
     out = []
     for s in ALL_STRATEGIES:
         filename = _chunks_file_for_strategy(s)
-        path = os.path.join(BASE_DIR, "data", "processed", filename)
+        path = _resolve_chunks_path(filename)
         if os.path.exists(path):
             out.append(s)
     return out
