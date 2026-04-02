@@ -342,7 +342,7 @@ Example: ["question 1?", "question 2?", "question 3?"]"""
         return 0.0, []
 
     all_texts = [query] + alternates
-    embeddings = jina_model.encode(texts=all_texts, task="retrieval", prompt_name="query")
+    embeddings = jina_model.encode(texts=all_texts, task="text-matching")
     embeddings = np.array(embeddings)
 
     query_emb = embeddings[0]
