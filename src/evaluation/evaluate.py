@@ -8,6 +8,7 @@ Uses DeepSeek V3.2 as LLM-as-judge for both metrics.
 """
 import json
 import os
+import re
 import sys
 import hashlib
 
@@ -297,28 +298,39 @@ Example: ["alt 1", "alt 2", "alt 3"]"""
         return _parse_json(call_llm(prompt))
     except (json.JSONDecodeError, ValueError):
         return []
+def _extract_final_answer(answer):
+    """Extract only the Answer section from a structured LLM response.
+
+    The generation prompt enforces an 'Answer:' section at the end.
+    Falls back to the full answer if the section is not found.
+    """
+    match = re.search(r"(?i)answer\s*[:\-]?\s*(.*)", answer, re.DOTALL)
+    if match:
+        return match.group(1).strip()
+    return answer
+
+
 def compute_relevancy(query, answer, jina_model, cache=None):
-    """Compute relevancy via cosine similarity between original query and
-    alternate queries generated from the answer.
+    """Compute relevancy by generating 3 questions from the final answer, then
+    computing cosine similarity between those questions and the original query.
 
     Returns (score, alternates) where score is mean cosine similarity (0-1).
     """
-    prompt = f"""You are an aviation safety research assistant.
-Generate {3} alternative phrasings of the ORIGINAL question, informed by the answer content.
+    final_answer = _extract_final_answer(answer)
 
-===Original Question===
-{query}
+    prompt = f"""You are an aviation safety research assistant.
+Given the answer below, generate exactly 3 questions that this answer directly addresses.
 
 ===Answer===
-{answer}
+{final_answer}
 
 ===Return Requirements===
-1. Output JSON array of exactly 3 strings.
-2. Preserve the same information need as the original question.
-3. Do not add details not implied by the original question.
-4. No text outside JSON.
+1. Output a JSON array of exactly 3 strings.
+2. Each string must be a question that the answer above can answer.
+3. Use aviation domain terminology where appropriate.
+4. No text outside the JSON array.
 
-Example: ["alt 1", "alt 2", "alt 3"]"""
+Example: ["question 1?", "question 2?", "question 3?"]"""
     try:
         raw_alternates = _parse_json(_cached_llm(prompt, cache=cache))
     except (json.JSONDecodeError, ValueError):

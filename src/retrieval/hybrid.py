@@ -441,6 +441,7 @@ Answer the following question by writing a concise investigative narrative in th
 Use precise technical language, third-person past tense, and include specific details such as flight hours, system states,
 crew actions, meteorological conditions, or causal factors as appropriate. Do not hedge or qualify — write as a definitive finding.
 Only draw on accidents and events from NTSB reports between 1996 and 2025.
+Keep the response to 3–4 sentences. Do not invent specific report numbers, tail numbers, or airline names — only include them if you are certain they are accurate.
 
 Question: {query}
 """

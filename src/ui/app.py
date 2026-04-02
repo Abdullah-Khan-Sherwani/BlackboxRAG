@@ -260,7 +260,7 @@ if query:
             st.metric("Relevancy", f"{rel_score:.1%}")
 
             if rel_alternates:
-                with st.expander("Alternate query phrasings"):
+                with st.expander("Questions generated from answer"):
                     for alt in rel_alternates:
                         st.markdown(f"- {alt}")
 
