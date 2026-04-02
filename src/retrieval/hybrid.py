@@ -14,15 +14,31 @@ from src.llm.client import call_eval_llm
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-STRATEGIES = ["section", "fixed", "recursive", "semantic"]
+STRATEGIES = ["section", "md_recursive", "parent_child", "fixed", "recursive", "semantic", "parent"]
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
-CHUNK_FILE_BY_STRATEGY = {
-    "fixed": "chunks_fixed.json",
-    "recursive": "chunks_recursive.json",
-    "semantic": "chunks_semantic.json",
-    "section": "chunks_md_section.json",
-}
+
+def _candidate_chunk_paths(strategy: str):
+    """Return candidate chunk paths for strategy across legacy/new layouts."""
+    base = os.path.join(BASE_DIR, "data", "processed")
+    alt = os.path.join(base, "chunks_md_recursive")
+
+    by_strategy = {
+        "section": ["chunks_md_section.json"],
+        "md_recursive": ["chunks_md_md_recursive.json", "chunks_md_recursive.json"],
+        "parent_child": ["chunks_md_parent_child.json", "chunks_parent_child.json"],
+        "parent": ["chunks_md_parent_child.json", "chunks_parent.json"],
+        "fixed": ["chunks_baseline_fixed.json", "chunks_fixed.json"],
+        "recursive": ["chunks_baseline_recursive.json", "chunks_recursive.json"],
+        "semantic": ["chunks_baseline_semantic.json", "chunks_semantic.json"],
+    }
+
+    names = by_strategy.get(strategy, [f"chunks_{strategy}.json"])
+    paths = []
+    for name in names:
+        paths.append(os.path.join(base, name))
+        paths.append(os.path.join(alt, name))
+    return paths
 
 
 def build_bm25_index(strategy):
@@ -30,8 +46,12 @@ def build_bm25_index(strategy):
 
     Returns (BM25Okapi, list[dict]) — the index and the original chunk dicts.
     """
-    filename = CHUNK_FILE_BY_STRATEGY.get(strategy, f"chunks_{strategy}.json")
-    path = os.path.join(BASE_DIR, "data", "processed", filename)
+    path = next((p for p in _candidate_chunk_paths(strategy) if os.path.exists(p)), None)
+    if not path:
+        tried = "\n  - " + "\n  - ".join(_candidate_chunk_paths(strategy))
+        raise FileNotFoundError(
+            f"No chunk file found for strategy '{strategy}'. Tried:{tried}"
+        )
     with open(path, "r", encoding="utf-8") as f:
         chunks = json.load(f)
 
