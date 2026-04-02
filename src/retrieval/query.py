@@ -208,12 +208,26 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
             "Check internet/VPN and Pinecone availability, or run evaluation with BM25 fallback."
         ) from e
 
-    # Attach full text from local storage
-    chunk_store = load_chunks(canonical_strategy)
-    chunks_dict = chunk_store["by_id"]
-    parent_lookup = chunk_store["parent_lookup"]
+    # Attach full text from local storage.
+    # The Pinecone index contains section-aware vectors, so always look up
+    # chunk text from the section store.  Fall back to the requested strategy
+    # in case the ID happens to exist there instead.
+    section_store = load_chunks("section")
+    section_dict = section_store["by_id"]
+    parent_lookup = section_store["parent_lookup"]
+
+    # If the user picked a different strategy, load it as a secondary lookup.
+    if canonical_strategy != "section":
+        try:
+            alt_store = load_chunks(canonical_strategy)
+            alt_dict = alt_store["by_id"]
+        except FileNotFoundError:
+            alt_dict = {}
+    else:
+        alt_dict = {}
+
     for match in results.matches:
-        local = chunks_dict.get(match.id, {})
+        local = section_dict.get(match.id) or alt_dict.get(match.id) or {}
         # Provenance marker for semantic retrieval path.
         match.metadata["retrieval_strategy"] = "semantic"
         # Parent-child strategy retrieves child vectors but sends parent context to LLM.
