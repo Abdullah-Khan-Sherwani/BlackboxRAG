@@ -164,17 +164,14 @@ def get_pinecone_filter(query: str, strategy: str = "md_recursive") -> dict:
     """
     ntsb_no = detect_report_from_query(query)
     
-    base_filter = {"strategy": {"$eq": strategy}}
-    
+    # Don't filter by strategy — the Pinecone index may only contain one
+    # strategy (e.g. section-aware jina embeddings) while the UI lets users
+    # pick different strategies for BM25.  Filtering by strategy would return
+    # zero results for strategies not in the index.
     if ntsb_no:
-        return {
-            "$and": [
-                base_filter,
-                {"ntsb_no": {"$eq": ntsb_no}}
-            ]
-        }
+        return {"ntsb_no": {"$eq": ntsb_no}}
     
-    return base_filter
+    return {}
 
 
 if __name__ == "__main__":
