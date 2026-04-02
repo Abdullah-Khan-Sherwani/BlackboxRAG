@@ -484,7 +484,11 @@ def chunk_markdown_baseline_semantic(md_file_path: str) -> list[dict]:
 
 
 def chunk_markdown_md_recursive(md_file_path: str):
-    """md_recursive strategy: header-aware splitting then recursive chunking."""
+    """md_recursive strategy: header-aware splitting then recursive chunking.
+
+    Chunk size is 4x larger than the original (2048 chars, ~512 tokens),
+    with a hard 512-token cap enforced by _rebalance_to_token_bounds.
+    """
     with open(md_file_path, "r", encoding="utf-8") as f:
         content = f.read()
 
@@ -499,9 +503,10 @@ def chunk_markdown_md_recursive(md_file_path: str):
     header_splitter = MarkdownHeaderTextSplitter(headers_to_split_on=headers_to_split_on)
     section_docs = header_splitter.split_text(content)
 
+    # 4x bigger: chunk_size 512 → 2048, overlap 50 → 200
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=512,
-        chunk_overlap=50,
+        chunk_size=2048,
+        chunk_overlap=200,
         separators=["\n\n", "\n", ". ", " "],
     )
 
@@ -517,8 +522,12 @@ def chunk_markdown_md_recursive(md_file_path: str):
         if not section_text:
             continue
 
-        sub_chunks = splitter.split_text(section_text)
-        for chunk_idx, chunk_text in enumerate(sub_chunks):
+        raw_sub_chunks = splitter.split_text(section_text)
+        # Enforce hard 512-token maximum per chunk
+        bounded = _rebalance_to_token_bounds(
+            raw_sub_chunks, min_tokens=64, max_tokens=512, target_tokens=384
+        )
+        for chunk_idx, chunk_text in enumerate(bounded):
             item = {
                 "chunk_id": f"{report_id}_mdrec_{sec_idx:03d}_{chunk_idx:03d}",
                 "report_id": report_id,
