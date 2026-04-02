@@ -1,9 +1,12 @@
-#!/usr/bin/env python3
 """
-Generate embeddings for section-aware chunks and upsert to Pinecone.
-This script handles the new metadata-enriched section chunks.
-"""
+Upsert enriched section chunks to Pinecone using pre-built embeddings.
 
+Run enrich_section_chunks.py first to produce chunks_md_section_enriched.json.
+
+Reads  : data/processed/chunks_md_section_enriched.json
+         data/processed/embeddings_md_section.npz
+Upserts: Pinecone index 'ntsb-rag' with strategy='section'
+"""
 import json
 import os
 import sys
@@ -11,216 +14,108 @@ from pathlib import Path
 
 import numpy as np
 from dotenv import load_dotenv
-from pinecone import Pinecone, ServerlessSpec
+from pinecone import Pinecone
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
-from src.retrieval.query import load_model
-
-INDEX_NAME = "ntsb-rag"
-CHUNK_FILE = BASE_DIR / "data" / "processed" / "chunks_md_section.json"
-EMBEDDING_FILE = BASE_DIR / "data" / "processed" / "embeddings_section.npz"
-DIMENSION = 768
-BATCH_SIZE = 100
+INDEX_NAME     = "ntsb-rag"
+CHUNK_FILE     = BASE_DIR / "data" / "processed" / "chunks_md_section_enriched.json"
+EMBEDDING_FILE = BASE_DIR / "data" / "processed" / "embeddings_md_section.npz"
+BATCH_SIZE     = 100
 
 
-def init_pinecone():
-    """Initialize and return Pinecone index."""
+def init_pinecone() -> "pinecone.Index":
+    load_dotenv(BASE_DIR / "data" / "processed" / "env")
     load_dotenv(BASE_DIR / ".env")
     api_key = os.environ.get("PINECONE_API_KEY")
     if not api_key:
-        print("ERROR: PINECONE_API_KEY not found in .env")
-        return None
-    
+        raise RuntimeError("PINECONE_API_KEY not found. Check .env or data/processed/env.")
     pc = Pinecone(api_key=api_key)
-    
-    try:
-        existing = [idx.name for idx in pc.list_indexes()]
-        if INDEX_NAME not in existing:
-            print(f"Creating Pinecone index '{INDEX_NAME}'...")
-            pc.create_index(
-                name=INDEX_NAME,
-                dimension=DIMENSION,
-                metric="cosine",
-                spec=ServerlessSpec(cloud="aws", region="us-east-1"),
-            )
-            print("✓ Index created")
-        else:
-            print(f"✓ Index '{INDEX_NAME}' exists")
-        
-        return pc.Index(INDEX_NAME)
-    except Exception as e:
-        print(f"ERROR connecting to Pinecone: {e}")
-        return None
+    return pc.Index(INDEX_NAME)
 
 
-def load_chunks():
-    """Load section chunks from JSON file."""
+def load_artifacts() -> tuple[dict[str, dict], np.ndarray, list[str]]:
     if not CHUNK_FILE.exists():
-        print(f"ERROR: Chunk file not found: {CHUNK_FILE}")
-        return None
-    
+        raise FileNotFoundError(
+            f"{CHUNK_FILE.name} not found. Run enrich_section_chunks.py first."
+        )
+    if not EMBEDDING_FILE.exists():
+        raise FileNotFoundError(f"{EMBEDDING_FILE.name} not found.")
+
+    print(f"Loading enriched chunks from {CHUNK_FILE.name}...")
     with open(CHUNK_FILE, "r", encoding="utf-8") as f:
         chunks = json.load(f)
-    
-    print(f"✓ Loaded {len(chunks)} section chunks")
-    return chunks
+    by_id = {c["chunk_id"]: c for c in chunks}
+    print(f"  {len(by_id)} chunks loaded")
+
+    print(f"Loading embeddings from {EMBEDDING_FILE.name}...")
+    npz = np.load(EMBEDDING_FILE)
+    chunk_ids = npz["chunk_ids"].tolist()
+    embeddings = npz["embeddings"]
+    print(f"  {len(chunk_ids)} embeddings, shape={embeddings.shape}")
+
+    return by_id, embeddings, chunk_ids
 
 
-def generate_embeddings(model, chunks):
-    """Generate embeddings for chunks using Jina model (batch processing)."""
-    print(f"\nGenerating embeddings for {len(chunks)} chunks (batch processing)...")
-    
-    # Extract text and IDs
-    texts = [c.get("text", "")[:512] for c in chunks]  # Limit text length
-    chunk_ids = [c["chunk_id"] for c in chunks]
-    
-    # Process in batches to avoid OOM
-    embedding_batch_size = 500
-    all_embeddings = []
-    
-    try:
-        for i in range(0, len(texts), embedding_batch_size):
-            batch_texts = texts[i:i + embedding_batch_size]
-            batch_ids = chunk_ids[i:i + embedding_batch_size]
-            
-            print(f"  Processing batch {i//embedding_batch_size + 1}...", end=" ")
-            
-            # Encode batch
-            batch_embeddings = model.encode(
-                texts=batch_texts,
-                task="retrieval",
-                prompt_name="query"
-            )
-            all_embeddings.append(batch_embeddings)
-            print(f"✓ ({len(batch_texts)} chunks)")
-        
-        # Combine all embeddings
-        embeddings = np.vstack(all_embeddings)
-        print(f"✓ Generated embeddings shape: {embeddings.shape}")
-        
-        # Save embeddings
-        np.savez_compressed(
-            EMBEDDING_FILE,
-            embeddings=embeddings,
-            chunk_ids=np.array(chunk_ids, dtype=object)
-        )
-        print(f"✓ Saved embeddings to {EMBEDDING_FILE}")
-        
-        return embeddings, chunk_ids
-    except Exception as e:
-        print(f"ERROR generating embeddings: {e}")
-        import traceback
-        traceback.print_exc()
-        return None, None
-
-
-def build_vectors(chunks, embeddings, chunk_ids):
-    """Build Pinecone vector dicts with metadata."""
-    print(f"\nBuilding Pinecone vectors...")
-    
+def build_vectors(by_id: dict, embeddings: np.ndarray, chunk_ids: list[str]) -> list[dict]:
     vectors = []
+    skipped = 0
     for cid, emb in zip(chunk_ids, embeddings):
-        # Find matching chunk
-        chunk = next((c for c in chunks if c["chunk_id"] == cid), None)
-        if not chunk:
+        chunk = by_id.get(cid)
+        if chunk is None:
+            skipped += 1
             continue
-        
-        # Build metadata from chunk
         vectors.append({
             "id": cid,
             "values": emb.tolist(),
             "metadata": {
-                "ntsb_no": chunk.get("ntsb_no", ""),
-                "event_date": chunk.get("event_date", ""),
-                "state": chunk.get("state", ""),
-                "make": chunk.get("make", ""),
-                "model": chunk.get("model", ""),
+                "ntsb_no":        chunk.get("ntsb_no", ""),
+                "report_id":      chunk.get("report_id", ""),
+                "entity_id":      chunk.get("entity_id", chunk.get("report_id", "")),
+                "event_date":     chunk.get("event_date", ""),
+                "state":          chunk.get("state", ""),
+                "make":           chunk.get("make", ""),
+                "model":          chunk.get("model", ""),
                 "phase_of_flight": chunk.get("phase_of_flight", ""),
-                "weather": chunk.get("weather", ""),
-                "section_title": chunk.get("section_title", ""),
-                "strategy": "section",  # Important: mark as section strategy
+                "weather":        chunk.get("weather", ""),
+                "section_title":  chunk.get("section_title", ""),
+                "source_filename": chunk.get("source_filename", ""),
+                "context_summary": chunk.get("context_summary", ""),
+                "strategy":       "section",
             },
         })
-    
-    print(f"✓ Built {len(vectors)} vectors with metadata")
+    if skipped:
+        print(f"  WARNING: {skipped} chunk IDs in embeddings had no match in chunks file")
     return vectors
 
 
-def upsert_vectors(index, vectors):
-    """Batch upsert vectors to Pinecone."""
-    print(f"\nUpserting {len(vectors)} vectors to Pinecone...")
-    
-    try:
-        for i in range(0, len(vectors), BATCH_SIZE):
-            batch = vectors[i : i + BATCH_SIZE]
-            index.upsert(vectors=batch)
-            pct = min(i + BATCH_SIZE, len(vectors)) / len(vectors) * 100
-            print(f"  [{pct:.1f}%] Upserted {min(i + BATCH_SIZE, len(vectors))}/{len(vectors)}")
-        
-        print(f"✓ All vectors upserted successfully!")
-        return True
-    except Exception as e:
-        print(f"ERROR upserting vectors: {e}")
-        return False
+def upsert_vectors(index, vectors: list[dict]) -> None:
+    total = len(vectors)
+    print(f"Upserting {total} vectors in batches of {BATCH_SIZE}...")
+    for i in range(0, total, BATCH_SIZE):
+        batch = vectors[i : i + BATCH_SIZE]
+        index.upsert(vectors=batch)
+        done = min(i + BATCH_SIZE, total)
+        print(f"  {done}/{total} ({done/total*100:.1f}%)", flush=True)
+    print("Upsert complete.")
 
 
 def main():
-    print("=" * 80)
-    print("SECTION-AWARE CHUNKS: EMBED & UPSERT TO PINECONE")
-    print("=" * 80)
-    print()
-    
-    # Initialize
+    print("=== Upsert Section Chunks to Pinecone ===\n")
+
     index = init_pinecone()
-    if not index:
-        return False
-    
-    chunks = load_chunks()
-    if not chunks:
-        return False
-    
-    # Load embedding model
-    print("\nLoading embedding model...")
-    model = load_model()
-    if not model:
-        print("ERROR: Failed to load model")
-        return False
-    
-    # Generate embeddings
-    embeddings, chunk_ids = generate_embeddings(model, chunks)
-    if embeddings is None:
-        return False
-    
-    # Build vectors
-    vectors = build_vectors(chunks, embeddings, chunk_ids)
-    if not vectors:
-        return False
-    
-    # Upsert to Pinecone
-    success = upsert_vectors(index, vectors)
-    
-    print()
-    print("=" * 80)
-    if success:
-        print("✅ SECTION CHUNKS SUCCESSFULLY INDEXED IN PINECONE")
-        print(f"   Total chunks: {len(vectors)}")
-        print(f"   Strategy: section (markdown-aware with metadata)")
-        print(f"   Metadata fields: ntsb_no, event_date, make, model, state")
-        print()
-        print("Next steps:")
-        print("  • Test retrieval with crew/pilot hours query")
-        print("  • Verify that crew section chunks are now retrievable")
-        print("  • Compare answers before and after indexing")
-    else:
-        print("❌ FAILED TO UPSERT SECTION CHUNKS")
-    print("=" * 80)
-    print()
-    
-    return success
+    print(f"Connected to index '{INDEX_NAME}'")
+
+    by_id, embeddings, chunk_ids = load_artifacts()
+    vectors = build_vectors(by_id, embeddings, chunk_ids)
+    print(f"Built {len(vectors)} vectors with enriched metadata\n")
+
+    upsert_vectors(index, vectors)
+
+    stats = index.describe_index_stats()
+    print(f"\nIndex total vectors: {stats.total_vector_count}")
 
 
 if __name__ == "__main__":
-    success = main()
-    sys.exit(0 if success else 1)
+    main()

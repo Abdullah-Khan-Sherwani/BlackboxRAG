@@ -94,8 +94,17 @@ def build_prompt(query, retrieved_chunks):
         context_summary = _get_meta(chunk, "context_summary", "")
         numerics = _get_meta(chunk, "numerics", "None")
         aircraft_components = _get_meta(chunk, "aircraft_components", "None")
-        header = f"[Report: {report_id} | Section: {section or 'N/A'}]"
-        text = _get_meta(chunk, "text", "")
+        event_date = _get_meta(chunk, "event_date", "")
+        make = _get_meta(chunk, "make", "")
+        model = _get_meta(chunk, "model", "")
+        state = _get_meta(chunk, "state", "")
+        aircraft = f"{make} {model}".strip() or "N/A"
+        header = (
+            f"[Report: {report_id} | Date: {event_date or 'N/A'} | "
+            f"Aircraft: {aircraft} | Location: {state or 'N/A'} | Section: {section or 'N/A'}]"
+        )
+        contextualized = _get_meta(chunk, "contextualized_text", "")
+        text = contextualized if contextualized else _get_meta(chunk, "text", "")
         context_blocks.append(
             f"{header}\n"
             f"[Chunk: {i} | Role: {role}]\n"

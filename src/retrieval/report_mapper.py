@@ -155,23 +155,21 @@ def detect_report_from_query(query: str) -> str:
 def get_pinecone_filter(query: str, strategy: str = "md_recursive") -> dict:
     """
     Build a Pinecone metadata filter for a query.
-    
-    If the query unambiguously targets a specific report, filter to only that report.
-    Otherwise, allow all chunks (discovery mode for cross-report queries).
-    
-    Returns: {"strategy": {"$eq": strategy}} or 
-             {"$and": [{"strategy": {"$eq": strategy}}, {"ntsb_no": {"$eq": ntsb_no}}]}
+
+    Always filters by strategy so the selected chunking approach is used
+    consistently for both semantic and BM25 retrieval paths.
+    Additionally filters by NTSB report number when the query unambiguously
+    targets a specific report.
+
+    Returns: {"strategy": {"$eq": strategy}} or
+             {"$and": [{"strategy": ...}, {"ntsb_no": ...}]}
     """
     ntsb_no = detect_report_from_query(query)
-    
-    # Don't filter by strategy — the Pinecone index may only contain one
-    # strategy (e.g. section-aware jina embeddings) while the UI lets users
-    # pick different strategies for BM25.  Filtering by strategy would return
-    # zero results for strategies not in the index.
+
     if ntsb_no:
-        return {"ntsb_no": {"$eq": ntsb_no}}
-    
-    return {}
+        return {"$and": [{"strategy": {"$eq": strategy}}, {"ntsb_no": {"$eq": ntsb_no}}]}
+
+    return {"strategy": {"$eq": strategy}}
 
 
 if __name__ == "__main__":

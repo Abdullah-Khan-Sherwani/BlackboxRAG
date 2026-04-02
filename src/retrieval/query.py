@@ -16,7 +16,7 @@ INDEX_NAME = "ntsb-rag"
 MODEL_NAME = "jinaai/jina-embeddings-v5-text-nano"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-ALL_STRATEGIES = ["section", "md_recursive", "parent_child", "fixed", "recursive", "semantic", "parent"]
+ALL_STRATEGIES = ["section", "md_recursive", "parent_child", "fixed", "recursive", "semantic"]
 
 SAMPLE_QUERIES = [
     "What are common causes of engine failure during takeoff?",
@@ -41,7 +41,7 @@ def _chunks_file_for_strategy(strategy: str) -> str:
     """Resolve local chunk artifact name across advanced and baseline modes."""
     s = _canonical_strategy(strategy)
     if s == "section":
-        return "chunks_md_section.json"
+        return "chunks_md_section_enriched.json"
     if s == "md_recursive":
         return "chunks_md_md_recursive.json"
     if s == "parent_child":
@@ -209,63 +209,48 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
         ) from e
 
     # Attach full text from local storage.
-    # The Pinecone index contains section-aware vectors, so always look up
-    # chunk text from the section store.  Fall back to the requested strategy
-    # in case the ID happens to exist there instead.
-    section_store = load_chunks("section")
-    section_dict = section_store["by_id"]
-    parent_lookup = section_store["parent_lookup"]
+    # Each Pinecone vector carries a 'strategy' metadata field. Route each match
+    # to the correct local chunk store so text lookup is correct regardless of
+    # whether Pinecone returns a single strategy or a mix.
+    _local_stores: dict[str, dict] = {}
 
-    # If the user picked a different strategy, load it as a secondary lookup.
-    if canonical_strategy != "section":
-        try:
-            alt_store = load_chunks(canonical_strategy)
-            alt_dict = alt_store["by_id"]
-        except FileNotFoundError:
-            alt_dict = {}
-    else:
-        alt_dict = {}
+    def _get_local_store(strat: str) -> dict:
+        """Lazy-load and cache local chunk store per strategy."""
+        if strat not in _local_stores:
+            try:
+                _local_stores[strat] = load_chunks(strat)
+            except FileNotFoundError:
+                _local_stores[strat] = {"by_id": {}, "parent_lookup": {}}
+        return _local_stores[strat]
+
+    # Pre-load the requested strategy so the common path is always warm.
+    _get_local_store(canonical_strategy)
 
     for match in results.matches:
-        local = section_dict.get(match.id) or alt_dict.get(match.id) or {}
+        match_strategy = match.metadata.get("strategy") or canonical_strategy
+        store = _get_local_store(match_strategy)
+        local = store["by_id"].get(match.id) or {}
+
         # Provenance marker for semantic retrieval path.
         match.metadata["retrieval_strategy"] = "semantic"
+
         # Parent-child strategy retrieves child vectors but sends parent context to LLM.
-        if canonical_strategy == "parent_child":
+        if match_strategy == "parent_child":
             parent_id = local.get("parent_id", "")
-            parent_text = parent_lookup.get(parent_id, "") if parent_id else ""
+            parent_text = store["parent_lookup"].get(parent_id, "") if parent_id else ""
             match.metadata["text"] = parent_text or local.get("text", "")
         else:
             match.metadata["text"] = local.get("text", "")
-        # Ensure provenance fields are available even when Pinecone metadata is sparse.
-        if "entity_id" in local and not match.metadata.get("entity_id"):
-            match.metadata["entity_id"] = local.get("entity_id", "")
-        if "source_filename" in local and not match.metadata.get("source_filename"):
-            match.metadata["source_filename"] = local.get("source_filename", "")
-        if "context_summary" in local and not match.metadata.get("context_summary"):
-            match.metadata["context_summary"] = local.get("context_summary", "")
-        if "role" in local and not match.metadata.get("role"):
-            match.metadata["role"] = local.get("role", "Unknown")
-        if "section_title" in local and not match.metadata.get("section_title"):
-            match.metadata["section_title"] = local.get("section_title", "")
-        if "report_id" in local and not match.metadata.get("report_id"):
-            match.metadata["report_id"] = local.get("report_id", "")
-        if "ntsb_no" in local and not match.metadata.get("ntsb_no"):
-            match.metadata["ntsb_no"] = local.get("ntsb_no", "")
-        if "event_date" in local and not match.metadata.get("event_date"):
-            match.metadata["event_date"] = local.get("event_date", "")
-        if "make" in local and not match.metadata.get("make"):
-            match.metadata["make"] = local.get("make", "")
-        if "model" in local and not match.metadata.get("model"):
-            match.metadata["model"] = local.get("model", "")
-        if "entities" in local and not match.metadata.get("entities"):
-            match.metadata["entities"] = local.get("entities", "")
-        if "aircraft_components" in local and not match.metadata.get("aircraft_components"):
-            match.metadata["aircraft_components"] = local.get("aircraft_components", "")
-        if "numerics" in local and not match.metadata.get("numerics"):
-            match.metadata["numerics"] = local.get("numerics", "")
-        if "parent_id" in local:
-            match.metadata["parent_id"] = local.get("parent_id", "")
+
+        # Enrich Pinecone metadata with any fields only present in the local store.
+        for field in (
+            "entity_id", "source_filename", "context_summary", "role",
+            "section_title", "report_id", "ntsb_no", "event_date",
+            "make", "model", "entities", "aircraft_components",
+            "numerics", "parent_id", "contextualized_text",
+        ):
+            if field in local and not match.metadata.get(field):
+                match.metadata[field] = local[field]
 
     return results.matches
 

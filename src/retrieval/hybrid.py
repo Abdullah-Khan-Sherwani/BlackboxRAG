@@ -14,7 +14,7 @@ from src.llm.client import call_eval_llm
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-STRATEGIES = ["section", "md_recursive", "parent_child", "fixed", "recursive", "semantic", "parent"]
+STRATEGIES = ["section", "md_recursive", "parent_child", "fixed", "recursive", "semantic"]
 RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
 
 
@@ -24,7 +24,7 @@ def _candidate_chunk_paths(strategy: str):
     alt = os.path.join(base, "chunks_md_recursive")
 
     by_strategy = {
-        "section": ["chunks_md_section.json"],
+        "section": ["chunks_md_section_enriched.json", "chunks_md_section.json"],
         "md_recursive": ["chunks_md_md_recursive.json", "chunks_md_recursive.json"],
         "parent_child": ["chunks_md_parent_child.json", "chunks_parent_child.json"],
         "parent": ["chunks_md_parent_child.json", "chunks_parent.json"],

@@ -16,9 +16,13 @@ data/raw/*
 !data/raw/.gitkeep
 
 # Large unzipped chunk files (unzip locally from chunks_md_recursive.zip)
+data/processed/chunks_md_recursive.json
 data/processed/chunks_md_md_recursive.json
 data/processed/chunks_md_parent_child.json
-data/processed/chunks_md_recursive.json
+data/processed/chunks_md_section.json
+data/processed/chunks_md_section_enriched.json
+data/processed/chunks_baseline_recursive.json
+data/processed/chunks_baseline_semantic.json
 
 # API Keys and Secrets
 .env

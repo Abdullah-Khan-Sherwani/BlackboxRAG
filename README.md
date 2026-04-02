@@ -1,35 +1,28 @@
 # BlackboxRAG
 
-Cross-document reasoning over NTSB aviation accident reports.
-
-**Live Demo:** [HuggingFace Space](https://huggingface.co/spaces/YOUR_USERNAME/blackboxrag)
+Retrieval-Augmented Generation over 101 NTSB aviation accident reports (2016–2023).
 
 ## What it does
 
-Ask questions about aviation accidents — BlackboxRAG retrieves from 75-100 NTSB final investigation reports (2016-2023) and generates cited answers. It handles single-accident lookups, cross-document comparison, and causal pattern synthesis.
-
-## How it works
-
-Query → Hybrid Retrieval (Pinecone + BM25 + RRF) → Reranking → LLM Generation (HF Inference API) → Cited Answer
+Ask questions about aviation accidents — BlackboxRAG retrieves from NTSB final investigation
+reports and generates cited answers. Handles single-accident deep dives and cross-document
+pattern queries.
 
 ## Stack
 
-| Component | Choice |
-|-----------|--------|
-| Vector DB | Pinecone |
-| Embedding | all-MiniLM-L6-v2 |
-| Lexical Search | BM25 (rank_bm25) |
-| Reranker | Cross-encoder |
-| LLM | Mistral-7B via HF Inference API |
-| UI | Streamlit on HF Spaces |
-| Evaluation | deepeval (Faithfulness + Relevancy) |
+| Component      | Choice                                          |
+|----------------|-------------------------------------------------|
+| Vector DB      | Pinecone (`ntsb-rag`, cosine, 768-dim)          |
+| Embedding      | Jina v5 (`jina-embeddings-v5-text-nano`)        |
+| Lexical Search | BM25 (`rank_bm25`)                              |
+| Reranker       | `cross-encoder/ms-marco-MiniLM-L-6-v2`          |
+| LLM            | Ollama local / DeepSeek V3 / GPT-4o (NVIDIA)   |
+| UI             | Streamlit                                       |
 
-## Dataset
+## Run
 
-Garcia et al., Zenodo, 2025 — NTSB final reports 2016-2023.
+```bash
+streamlit run src/ui/app.py
+```
 
-## Team
-
-- [Member 1](https://github.com/PLACEHOLDER)
-- [Member 2](https://github.com/PLACEHOLDER)
-- [Member 3](https://github.com/PLACEHOLDER)
+See [QUICK_START.md](QUICK_START.md) for setup, collaborator workflow, and known issues.
