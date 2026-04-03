@@ -73,8 +73,14 @@ def bm25_retrieve(query, bm25, chunks, top_k=20):
     return results
 
 
-def rrf_fuse_lists(result_lists, k=60):
+def rrf_fuse_lists(result_lists, k=15, max_per_report=8):
     """Reciprocal Rank Fusion over multiple ranked lists.
+
+    k=15 is used instead of the web-corpus default (60) because our corpus is
+    ~100 documents — smaller k makes rank differences more discriminative.
+
+    max_per_report caps how many chunks from any single ntsb_no enter the
+    fused pool, preventing high-volume reports from flooding the reranker input.
 
     Returns fused list sorted by RRF score (descending).
     """
@@ -94,8 +100,14 @@ def rrf_fuse_lists(result_lists, k=60):
                 docs[doc_id]["retrieval_strategies"] = sorted(existing | item_strategy)
 
     fused = []
+    per_report_counts: dict[str, int] = {}
     for doc_id, score in sorted(scores.items(), key=lambda x: x[1], reverse=True):
         doc = docs[doc_id]
+        ntsb_no = doc.get("ntsb_no", "")
+        if ntsb_no:
+            if per_report_counts.get(ntsb_no, 0) >= max_per_report:
+                continue
+            per_report_counts[ntsb_no] = per_report_counts.get(ntsb_no, 0) + 1
         doc["score"] = score
         strategies = doc.get("retrieval_strategies", [])
         if len(strategies) == 1:
@@ -117,21 +129,24 @@ def load_reranker():
     return CrossEncoder(RERANKER_MODEL, device=device)
 
 
-def _is_comparison_query(query):
-    q = (query or "").lower()
-    patterns = [
-        r"\bcompare\b",
-        r"\bversus\b",
-        r"\bvs\.?\b",
-        r"\bdifference between\b",
-        r"\bacross\b",
-    ]
-    return any(re.search(p, q) for p in patterns)
+_MULTI_EVENT_PATTERNS = [
+    r"\bcompare\b",
+    r"\bversus\b",
+    r"\bvs\.?\b",
+    r"\bdifference between\b",
+    r"\bacross\b",
+    r"\bcommon\b",
+    r"\bhow often\b",
+    r"\blist\b",
+    r"\bgenerally\b",
+    r"\btrend\b",
+]
 
 
 def _is_single_event_query(query):
-    """Heuristic: queries not phrased as comparisons are treated as single-event intent."""
-    return not _is_comparison_query(query)
+    """Heuristic: queries with comparison/frequency/trend signals are multi-event."""
+    q = (query or "").lower()
+    return not any(re.search(p, q) for p in _MULTI_EVENT_PATTERNS)
 
 
 def _soft_report_budget(ranked, top_k, dominant_report, keep_ratio=0.8):
@@ -164,65 +179,17 @@ def _soft_report_budget(ranked, top_k, dominant_report, keep_ratio=0.8):
     return selected[:top_k]
 
 
-def _entity_id(item: dict) -> str:
-    """Return canonical entity identifier used for dynamic weighting."""
-    return str(item.get("entity_id") or item.get("ntsb_no") or item.get("report_id") or "").strip()
-
-
-def _dominant_entity_stats(candidates: list[dict], top_n: int = 10) -> tuple[str, float]:
-    """Compute dominant entity and share in top-n candidates."""
-    if not candidates:
-        return "", 0.0
-
-    ranked = sorted(candidates, key=lambda x: x.get("score", 0.0), reverse=True)
-    probe = ranked[:top_n]
-    counts: dict[str, int] = {}
-    for item in probe:
-        eid = _entity_id(item)
-        if not eid:
-            continue
-        counts[eid] = counts.get(eid, 0) + 1
-
-    if not counts:
-        return "", 0.0
-
-    dominant = max(counts, key=counts.get)
-    ratio = counts[dominant] / max(len(probe), 1)
-    return dominant, ratio
-
-
-def apply_dynamic_entity_weighting(
-    candidates: list[dict],
-    top_n: int = 10,
-    threshold: float = 0.8,
-    boost: float = 0.18,
-) -> tuple[list[dict], dict]:
-    """Apply explicit 80/20 weighting: if top-n is 80% one entity, boost it in remaining pool."""
-    dominant_entity, ratio = _dominant_entity_stats(candidates, top_n=top_n)
-    debug = {
-        "dominant_entity": dominant_entity,
-        "dominant_ratio": ratio,
-        "weighting_applied": False,
-    }
-    if not dominant_entity or ratio < threshold:
-        return candidates, debug
-
-    ranked = sorted(candidates, key=lambda x: x.get("score", 0.0), reverse=True)
-    head = ranked[:top_n]
-    tail = ranked[top_n:]
-    for item in tail:
-        if _entity_id(item) == dominant_entity:
-            item["score"] = float(item.get("score", 0.0)) + boost
-
-    boosted = sorted(head + tail, key=lambda x: x.get("score", 0.0), reverse=True)
-    debug["weighting_applied"] = True
-    return boosted, debug
 
 
 def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
     """Rerank candidates using a cross-encoder and return top-k.
 
-    Adds a mild diversity constraint so one report does not monopolize results.
+    For single-event queries the CE reranker is the sole authority on relevance:
+    - dominant report is detected via MAX CE score (not sum) so one high-scoring
+      chunk beats many mediocre ones from a larger report.
+    - min_unique_reports is reduced to 1 so diversity logic never injects
+      irrelevant reports when the CE already found the right one.
+    - _soft_report_budget is NOT applied after selection; the CE ranking stands.
     """
     if not candidates:
         return []
@@ -231,17 +198,17 @@ def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
     for i, score in enumerate(ce_scores):
         candidates[i]["score"] = float(score)
 
-    # Soft anti-mixing bias for single-event queries:
-    # prefer the dominant report but keep a small minority slice.
+    # Use MAX CE score per report so a single highly-relevant chunk dominates,
+    # not a report that happens to have many mediocre chunks in the pool.
     if _is_single_event_query(query):
-        report_strength = {}
+        report_max_score: dict[str, float] = {}
         for c in candidates:
             rid = c.get("ntsb_no", "")
             if not rid:
                 continue
-            report_strength[rid] = report_strength.get(rid, 0.0) + max(0.0, c["score"])
+            report_max_score[rid] = max(report_max_score.get(rid, float("-inf")), c["score"])
 
-        dominant_report = max(report_strength, key=report_strength.get) if report_strength else ""
+        dominant_report = max(report_max_score, key=report_max_score.get) if report_max_score else ""
         for c in candidates:
             rid = c.get("ntsb_no", "")
             if not rid or not dominant_report:
@@ -254,14 +221,14 @@ def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
     ranked = sorted(candidates, key=lambda x: x["score"], reverse=True)
 
     selected = []
-    per_report = {}
+    per_report: dict[str, int] = {}
     max_per_report = 2
     for item in ranked:
-        ntsb_no = item.get("ntsb_no", "")
-        if ntsb_no:
-            if per_report.get(ntsb_no, 0) >= max_per_report:
-                continue
-            per_report[ntsb_no] = per_report.get(ntsb_no, 0) + 1
+        # Use a sentinel key for chunks without ntsb_no so they are also capped.
+        ntsb_no = item.get("ntsb_no", "") or "__unknown__"
+        if per_report.get(ntsb_no, 0) >= max_per_report:
+            continue
+        per_report[ntsb_no] = per_report.get(ntsb_no, 0) + 1
         selected.append(item)
         if len(selected) >= top_k:
             break
@@ -276,9 +243,11 @@ def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
             if len(selected) >= top_k:
                 break
 
-    # Ensure we cover at least `min_unique_reports` if possible.
+    # For single-event queries the CE already identified the right report —
+    # do not force diversity by injecting other reports.
+    effective_min = 1 if _is_single_event_query(query) else min_unique_reports
     unique_ntsb = {s.get("ntsb_no", "") for s in selected if s.get("ntsb_no", "")}
-    if len(unique_ntsb) < min_unique_reports:
+    if len(unique_ntsb) < effective_min:
         selected_ids = {_get_id(s) for s in selected}
         selected_ntsb = set(unique_ntsb)
 
@@ -304,18 +273,8 @@ def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
             selected[replace_idx] = candidate
             selected_ids = {_get_id(s) for s in selected}
             selected_ntsb = {s.get("ntsb_no", "") for s in selected if s.get("ntsb_no", "")}
-            if len(selected_ntsb) >= min_unique_reports:
+            if len(selected_ntsb) >= effective_min:
                 break
-
-    if _is_single_event_query(query):
-        # Identify dominant report after rerank and apply soft 80/20 budget.
-        counts = {}
-        for item in ranked[: max(top_k * 3, top_k)]:
-            rid = item.get("ntsb_no", "")
-            if rid:
-                counts[rid] = counts.get(rid, 0) + 1
-        dominant_report = max(counts, key=counts.get) if counts else ""
-        selected = _soft_report_budget(ranked, top_k=top_k, dominant_report=dominant_report, keep_ratio=0.8)
 
     return selected
 
@@ -548,11 +507,6 @@ def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
         "multi_queries": None,
         "hyde_docs": [],
         "query_variants": [],
-        "dynamic_weighting": {
-            "dominant_entity": "",
-            "dominant_ratio": 0.0,
-            "weighting_applied": False,
-        },
     }
 
     # Query set: prioritize LLM multi-query (3-5 variants) and backfill deterministically.
@@ -599,8 +553,6 @@ def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
 
     # Fuse all ranked lists (semantic + lexical over expanded queries)
     fused = rrf_fuse_lists(ranked_lists)
-    fused, dyn_dbg = apply_dynamic_entity_weighting(fused, top_n=10, threshold=0.8, boost=0.18)
-    debug["dynamic_weighting"] = dyn_dbg
 
     # Rerank
     results = rerank(query, fused, reranker, top_k=top_k, min_unique_reports=min_unique_reports)
