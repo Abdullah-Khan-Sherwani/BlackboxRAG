@@ -75,7 +75,7 @@ def load_better_reranker():
         return model
     except:
         # Fallback to original
-        return CrossEncoder("cross-encoder/ms-marco-MiniLM-L-6-v2")
+        return CrossEncoder("cross-encoder/qnli-distilroberta-base")
 
 
 # ============================================================================

@@ -25,7 +25,10 @@ class KnowledgeResult:
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STRATEGIES = ["section", "md_recursive", "parent_child", "fixed", "recursive", "semantic"]
-RERANKER_MODEL = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+# Using QNLI DistilRoBERTa (Question-answering NLI) instead of MS MARCO
+# because it's optimized for Q&A tasks on technical content with numerical data.
+# Better handles NTSB aviation reports with timestamps, speeds, altitudes, etc.
+RERANKER_MODEL = "cross-encoder/qnli-distilroberta-base"
 
 
 def _candidate_chunk_paths(strategy: str):

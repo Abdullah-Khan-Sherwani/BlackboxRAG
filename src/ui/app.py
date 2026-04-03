@@ -119,7 +119,7 @@ with st.sidebar:
         st.markdown("- Generator: GPT-4o 120B (NVIDIA)")
     else:
         st.markdown("- Generator: DeepSeek V3.1 (NVIDIA)")
-    st.markdown("- Reranker: ms-marco-MiniLM-L-6-v2")
+    st.markdown("- Reranker: qnli-distilroberta-base")
 
 
 # -- Main area ----------------------------------------------------------------

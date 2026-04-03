@@ -49,7 +49,7 @@ These can be changed without breaking the architecture:
 |-----------|---------------|-------------|
 | Embedding model (local) | `all-MiniLM-L6-v2` (384d) | `all-mpnet-base-v2` (768d), `bge-small-en-v1.5` |
 | LLM | Mistral-7B via HF API | Llama-3-8B, TinyAya, any HF Inference model |
-| Reranker | Cross-encoder (`ms-marco-MiniLM-L-6-v2`) | NVIDIA NIM reranker, Cohere rerank |
+| Reranker | Cross-encoder (`qnli-distilroberta-base`) | NVIDIA NIM reranker, Cohere rerank |
 | BM25 implementation | `rank_bm25` Python library | Elasticsearch, custom TF-IDF |
 | Evaluation framework | `deepeval` | Custom LLM-as-a-Judge, RAGAS |
 | UI framework | Streamlit | Gradio |
@@ -283,7 +283,7 @@ def hybrid_retrieve(query, top_k=10, final_k=5):
 from sentence_transformers import CrossEncoder
 
 # Option A: Cross-encoder reranker (runs on-app or pre-computed)
-reranker = CrossEncoder('cross-encoder/ms-marco-MiniLM-L-6-v2')
+reranker = CrossEncoder('cross-encoder/qnli-distilroberta-base')
 
 def rerank(query, chunk_ids, top_k=5):
     pairs = [(query, get_chunk_text(cid)) for cid in chunk_ids]

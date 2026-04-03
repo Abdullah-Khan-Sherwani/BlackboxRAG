@@ -19,7 +19,7 @@ streamlit run src/ui/app.py
 | Vector DB      | Pinecone (`ntsb-rag`, cosine, 768-dim)|
 | Embedding      | Jina v5 (`jina-embeddings-v5-text-nano`, 768-dim) |
 | Lexical Search | BM25 (`rank_bm25`)                    |
-| Reranker       | `cross-encoder/ms-marco-MiniLM-L-6-v2`|
+| Reranker       | `cross-encoder/qnli-distilroberta-base`|
 | LLM (default)  | Ollama local (`qwen2.5:32b`)          |
 | LLM (API)      | DeepSeek V3.1 or GPT-4o via NVIDIA API|
 | UI             | Streamlit                             |

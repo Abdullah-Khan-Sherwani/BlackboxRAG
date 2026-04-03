@@ -15,7 +15,7 @@ pattern queries.
 | Vector DB      | Pinecone (`ntsb-rag`, cosine, 768-dim)          |
 | Embedding      | Jina v5 (`jina-embeddings-v5-text-nano`)        |
 | Lexical Search | BM25 (`rank_bm25`)                              |
-| Reranker       | `cross-encoder/ms-marco-MiniLM-L-6-v2`          |
+| Reranker       | `cross-encoder/qnli-distilroberta-base`          |
 | LLM            | Ollama local / DeepSeek V3 / GPT-4o (NVIDIA)   |
 | UI             | Streamlit                                       |
 
