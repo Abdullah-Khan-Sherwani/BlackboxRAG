@@ -165,11 +165,15 @@ def init_pinecone():
     return pc.Index(INDEX_NAME)
 
 
-def retrieve(query, strategy, top_k=5, model=None, index=None):
+def retrieve(query, strategy, top_k=5, model=None, index=None, ntsb_override=None):
     """Encode a query and retrieve top-k matching chunks from Pinecone.
 
     Uses query-to-report mapping to filter results for single-event queries.
     Enriches each match's metadata with the full text from local JSON.
+
+    Args:
+        ntsb_override: If provided, use this NTSB number for filtering instead
+            of running detect_report_from_query() on the query text.
     """
     canonical_strategy = _canonical_strategy(strategy)
 
@@ -191,9 +195,15 @@ def retrieve(query, strategy, top_k=5, model=None, index=None):
             query_embedding = model.encode(texts=[query], task="retrieval", device=runtime_device)
         except TypeError:
             query_embedding = model.encode(texts=[query], task="retrieval")
-    
+
     # Build filter: includes strategy and optional NTSB number filter
-    filter_dict = get_pinecone_filter(query, canonical_strategy)
+    if ntsb_override:
+        filter_dict = {"$and": [
+            {"strategy": {"$eq": canonical_strategy}},
+            {"ntsb_no": {"$eq": ntsb_override}},
+        ]}
+    else:
+        filter_dict = get_pinecone_filter(query, canonical_strategy)
     
     try:
         results = index.query(

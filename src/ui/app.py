@@ -16,9 +16,10 @@ from src.retrieval.query import load_model, init_pinecone, retrieve, available_s
 from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
     expand_query_variants, generate_multi_queries, generate_hyde_documents,
-    generate_knowledge_doc,
+    generate_knowledge_doc, KnowledgeResult,
     bm25_retrieve, rrf_fuse_lists, rerank, enrich_with_neighbors,
 )
+from src.retrieval.report_mapper import detect_report_from_query, resolve_report_number
 from src.generation.generate import generate_answer
 from src.evaluation.evaluate import compute_faithfulness, compute_relevancy
 
@@ -138,7 +139,12 @@ if query:
     # Retrieve
     multi_query_variants = None
     hyde_docs = None
+    knowledge_result = None
     knowledge_doc = None
+    llm_ntsb = ""
+    llm_confidence = "none"
+    regex_ntsb = ""
+    resolved_ntsb = ""
     if "Hybrid" in mode:
         reranker = get_reranker() if "Rerank" in mode else None
         bm25, chunks = get_bm25(strategy)
@@ -165,19 +171,32 @@ if query:
         # Step 2c: LLM knowledge augmentation (semantic-only, separate from HyDE)
         if use_knowledge_doc:
             with st.spinner("Step 2c/4 — Generating LLM knowledge answer..."):
-                knowledge_doc = generate_knowledge_doc(query, llm_provider=llm_provider, ollama_model=ollama_model)
+                knowledge_result = generate_knowledge_doc(query, llm_provider=llm_provider, ollama_model=ollama_model)
+                knowledge_doc = knowledge_result.narrative
+                llm_ntsb = knowledge_result.ntsb_number
+                llm_confidence = knowledge_result.confidence
+
+        # Resolve report number: regex detection vs LLM detection
+        regex_ntsb = detect_report_from_query(query)
+        if use_knowledge_doc:
+            resolved_ntsb = resolve_report_number(regex_ntsb, llm_ntsb, llm_confidence)
+        else:
+            resolved_ntsb = regex_ntsb
+
+        # Use resolved NTSB number as override for retrieval filtering
+        ntsb_override = resolved_ntsb if resolved_ntsb else None
 
         # Step 3: Semantic + BM25 retrieval for each query variant (increased from 40 to 60)
         ranked_lists = []
         for i, q in enumerate(queries, 1):
             with st.spinner(f"Step 3/4 — Searching (variant {i}/{len(queries)})..."):
-                ranked_lists.append(retrieve(q, strategy, top_k=60, model=jina_model, index=index))
+                ranked_lists.append(retrieve(q, strategy, top_k=60, model=jina_model, index=index, ntsb_override=ntsb_override))
                 ranked_lists.append(bm25_retrieve(q, bm25, chunks, top_k=60))
 
         # Knowledge doc — semantic retrieval only (no BM25)
         if knowledge_doc:
             with st.spinner("Step 3/4 — Knowledge-augmented semantic search..."):
-                ranked_lists.append(retrieve(knowledge_doc, strategy, top_k=60, model=jina_model, index=index))
+                ranked_lists.append(retrieve(knowledge_doc, strategy, top_k=60, model=jina_model, index=index, ntsb_override=ntsb_override))
 
         # Step 4: RRF fusion + optional cross-encoder rerank
         with st.spinner(f"Step 4/4 — Fusing & {'reranking' if reranker else 'selecting'} candidates..."):
@@ -231,6 +250,19 @@ if query:
         with st.expander("LLM Knowledge — Model's own answer used for semantic retrieval"):
             if knowledge_doc:
                 st.markdown(knowledge_doc)
+
+                # Report number detection comparison
+                st.divider()
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    st.markdown(f"**Regex-detected:** `{regex_ntsb or 'None'}`")
+                with col2:
+                    st.markdown(f"**LLM-detected:** `{llm_ntsb or 'None'}` ({llm_confidence})")
+                with col3:
+                    st.markdown(f"**Resolved:** `{resolved_ntsb or 'None (discovery mode)'}`")
+
+                if regex_ntsb and llm_ntsb and regex_ntsb != llm_ntsb:
+                    st.warning(f"Conflict: Regex detected {regex_ntsb}, LLM detected {llm_ntsb}. Using regex result.")
             else:
                 st.warning("Knowledge doc generation returned no results.")
 

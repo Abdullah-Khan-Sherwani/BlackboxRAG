@@ -6,12 +6,22 @@ import json
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
 
 from src.llm.client import call_eval_llm
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
+from src.retrieval.report_mapper import AVAILABLE_REPORTS
+
+
+@dataclass
+class KnowledgeResult:
+    """Structured output from LLM knowledge augmentation."""
+    narrative: str
+    ntsb_number: str   # e.g. "NTSB/AAR-18/01" or ""
+    confidence: str    # "high" | "medium" | "low" | "none"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 STRATEGIES = ["section", "md_recursive", "parent_child", "fixed", "recursive", "semantic"]
@@ -387,36 +397,162 @@ Format each as a separate paragraph starting with "Excerpt {{i}}:"
         return []
 
 
-def generate_knowledge_doc(query: str, llm_provider: str = "nvidia", ollama_model: str = "qwen2.5:32b") -> str:
+def _validate_ntsb_number(ntsb_number: str, narrative: str = "") -> str:
+    """Validate an LLM-returned NTSB number against known reports.
+
+    If a narrative is provided, cross-checks the matched report's metadata
+    (aircraft, location, keywords) against the narrative to catch cases where
+    the LLM gets the report number slightly wrong (e.g., AAR-13/01 vs AAR-14/01).
+
+    Returns the matching report ID if found and consistent, empty string otherwise.
+    """
+    if not ntsb_number:
+        return ""
+    n = ntsb_number.strip().upper()
+
+    # Direct match
+    matched = ""
+    for report_id in AVAILABLE_REPORTS:
+        if n in report_id.upper() or report_id.upper() in n:
+            matched = report_id
+            break
+
+    # Fallback: extract year/number digits
+    if not matched:
+        m = re.search(r"(\d{2,4})[_\-/\s]*(\d{2})", n)
+        if m:
+            year, num = m.groups()
+            for report_id in AVAILABLE_REPORTS:
+                if year in report_id and num in report_id:
+                    matched = report_id
+                    break
+
+    if not matched:
+        return ""
+
+    # Cross-check: if we have a narrative, verify the matched report's metadata
+    # is consistent with what the LLM described (aircraft, location, keywords).
+    if narrative and matched in AVAILABLE_REPORTS:
+        meta = AVAILABLE_REPORTS[matched]
+        narr_lower = narrative.lower()
+
+        # Extract key signals from the narrative
+        narr_signals = []
+        if meta.get("aircraft"):
+            aircraft_parts = meta["aircraft"].lower().split()
+            narr_signals = [p for p in aircraft_parts if len(p) > 2 and p in narr_lower]
+        if meta.get("keywords"):
+            kw_parts = meta["keywords"].lower().split()
+            narr_signals += [k for k in kw_parts if len(k) > 2 and k in narr_lower]
+        if meta.get("location"):
+            if meta["location"].lower() in narr_lower:
+                narr_signals.append(meta["location"].lower())
+
+        # If none of the report's metadata signals appear in the narrative,
+        # the LLM likely got the report number wrong. Try to find the right one.
+        if not narr_signals:
+            print(f"[KnowledgeDoc] Cross-check failed: '{matched}' metadata doesn't match narrative, searching alternatives...")
+            best_id = ""
+            best_score = 0
+            for alt_id, alt_meta in AVAILABLE_REPORTS.items():
+                if alt_id == matched:
+                    continue
+                score = 0
+                if alt_meta.get("aircraft"):
+                    for p in alt_meta["aircraft"].lower().split():
+                        if len(p) > 2 and p in narr_lower:
+                            score += 1
+                if alt_meta.get("keywords"):
+                    for k in alt_meta["keywords"].lower().split():
+                        if len(k) > 2 and k in narr_lower:
+                            score += 2  # Keywords are more specific
+                if alt_meta.get("location") and alt_meta["location"].lower() in narr_lower:
+                    score += 1
+                if score > best_score:
+                    best_score = score
+                    best_id = alt_id
+
+            if best_id and best_score >= 2:
+                print(f"[KnowledgeDoc] Cross-check found better match: '{best_id}' (score={best_score})")
+                return best_id
+            else:
+                print(f"[KnowledgeDoc] No better match found, discarding '{matched}'")
+                return ""
+
+    return matched
+
+
+def generate_knowledge_doc(query: str, llm_provider: str = "nvidia",
+                           ollama_model: str = "qwen2.5:32b") -> KnowledgeResult:
     """Generate a direct answer using the LLM's own aviation knowledge.
 
-    The answer is used only for semantic retrieval — not BM25 — to pull the
-    search into answer-space and surface chunks that match the answer rather
-    than the question phrasing.
+    Returns a KnowledgeResult with the narrative, detected NTSB report number,
+    and the LLM's confidence in that identification.
+
+    The narrative is used for semantic retrieval — not BM25 — to pull the
+    search into answer-space. The report number is used to filter Pinecone
+    results to the correct accident.
     """
-    prompt = f"""You are an aviation accident investigator writing a factual narrative based on your knowledge of NTSB investigations from 1996 to 2025.
+    prompt = f"""You are an aviation accident investigator with deep knowledge of NTSB investigations from 1996 to 2025.
 
 Answer the following question by writing a concise investigative narrative in the style of an NTSB report finding.
 Use precise technical language, third-person past tense, and include specific details such as flight hours, system states,
 crew actions, meteorological conditions, or causal factors as appropriate. Do not hedge or qualify — write as a definitive finding.
 Only draw on accidents and events from NTSB reports between 1996 and 2025.
-Keep the response to 3–4 sentences. Do not invent specific report numbers, tail numbers, or airline names — only include them if you are certain they are accurate.
+Keep the narrative to 3–4 sentences.
+
+Additionally, if you can identify the specific NTSB accident report this question is about, provide its report number
+(e.g., "NTSB/AAR-18/01", "NTSB/AAR-14/01"). If you are not confident, leave the report number empty.
+
+Respond in JSON format with exactly these keys:
+- "narrative": your investigative narrative (string)
+- "ntsb_number": the NTSB report number if known, otherwise "" (string)
+- "confidence": how confident you are in the report number — "high", "medium", "low", or "none" (string)
 
 Question: {query}
 """
     try:
         if llm_provider == "ollama":
             from src.llm.ollama_client import call_ollama
-            response = call_ollama(prompt, model=ollama_model)
+            response = call_ollama(prompt, model=ollama_model, json_mode=True)
         elif llm_provider == "gpt":
             from src.llm.client import call_llm, MODEL_GPT
-            response = call_llm(prompt, model=MODEL_GPT)
+            response = call_llm(prompt, model=MODEL_GPT,
+                                response_format={"type": "json_object"})
         else:
-            response = call_eval_llm(prompt)
-        return response.strip()
+            from src.llm.client import call_llm
+            response = call_llm(prompt,
+                                response_format={"type": "json_object"})
+
+        # Parse JSON response
+        print(f"[KnowledgeDoc] Raw LLM response:\n{response[:500]}")
+        try:
+            data = json.loads(response)
+            narrative = data.get("narrative", "").strip()
+            raw_ntsb = data.get("ntsb_number", "").strip()
+            confidence = data.get("confidence", "none").strip().lower()
+            print(f"[KnowledgeDoc] Parsed JSON — ntsb_number='{raw_ntsb}', confidence='{confidence}'")
+        except (json.JSONDecodeError, AttributeError) as exc:
+            # Fallback: treat entire response as narrative
+            print(f"[KnowledgeDoc] JSON parse failed ({exc}), using fallback")
+            narrative = response.strip()
+            raw_ntsb = ""
+            confidence = "none"
+
+        # Validate the report number against known reports
+        validated_ntsb = _validate_ntsb_number(raw_ntsb, narrative=narrative)
+        if raw_ntsb and not validated_ntsb:
+            print(f"[KnowledgeDoc] LLM returned '{raw_ntsb}' but it's not in the index — discarding")
+            confidence = "none"
+
+        return KnowledgeResult(
+            narrative=narrative,
+            ntsb_number=validated_ntsb,
+            confidence=confidence if confidence in ("high", "medium", "low", "none") else "none",
+        )
     except Exception as e:
         print(f"[KnowledgeDoc] generation failed: {e}")
-        return ""
+        return KnowledgeResult(narrative="", ntsb_number="", confidence="none")
 
 
 def _chunk_maps(chunks):

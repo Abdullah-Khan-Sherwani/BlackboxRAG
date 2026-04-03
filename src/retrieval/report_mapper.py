@@ -172,6 +172,32 @@ def get_pinecone_filter(query: str, strategy: str = "md_recursive") -> dict:
     return {"strategy": {"$eq": strategy}}
 
 
+def resolve_report_number(regex_result: str, llm_result: str, llm_confidence: str) -> str:
+    """Reconcile regex-detected and LLM-detected NTSB report numbers.
+
+    Priority:
+    1. Both agree → use it
+    2. Regex found one, LLM didn't → use regex (user explicitly mentioned it)
+    3. LLM found one (high/medium confidence), regex didn't → use LLM
+    4. Both disagree → prefer regex (explicit mention trumps LLM guess)
+    5. Neither found one → empty string (discovery mode)
+    """
+    if regex_result and llm_result:
+        if regex_result == llm_result:
+            return regex_result
+        # Conflict: prefer regex (explicit user mention)
+        print(f"[ReportMapper] Conflict: regex='{regex_result}', LLM='{llm_result}' — using regex")
+        return regex_result
+
+    if regex_result:
+        return regex_result
+
+    if llm_result and llm_confidence in ("high", "medium"):
+        return llm_result
+
+    return ""
+
+
 if __name__ == "__main__":
     # Test the detection with diverse query formats
     test_queries = [

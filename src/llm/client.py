@@ -72,13 +72,15 @@ def _get_hf_client() -> InferenceClient:
     stop=stop_after_attempt(3),
     reraise=True,
 )
-def call_llm(prompt: str, system: str | None = None, model: str | None = None) -> str:
+def call_llm(prompt: str, system: str | None = None, model: str | None = None,
+             response_format: dict | None = None) -> str:
     """Send a prompt to an NVIDIA-hosted model and return the response text.
 
     Args:
         prompt: The user message / main prompt content.
         system: Optional system message for role-setting.
         model: Model ID to use. Defaults to DeepSeek v3.1.
+        response_format: Optional response format spec, e.g. {"type": "json_object"}.
 
     Returns:
         The model's response as a string.
@@ -88,11 +90,15 @@ def call_llm(prompt: str, system: str | None = None, model: str | None = None) -
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    response = _get_client().chat.completions.create(
+    kwargs = dict(
         model=model or MODEL_DEEPSEEK,
         messages=messages,
         temperature=0.2,
     )
+    if response_format:
+        kwargs["response_format"] = response_format
+
+    response = _get_client().chat.completions.create(**kwargs)
     return response.choices[0].message.content.strip()
 
 
