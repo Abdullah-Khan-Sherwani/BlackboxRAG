@@ -4,19 +4,23 @@ Evaluation module with Faithfulness and Relevancy metrics.
 Faithfulness: claim extraction → verification → % supported by context.
 Relevancy: alternate query generation → cosine similarity with original query.
 
-Uses DeepSeek V3.2 as LLM-as-judge for both metrics.
+Uses GPT (openai/gpt-oss-120b via NVIDIA API) for both generation and LLM-as-judge.
+Runs in parallel batches of 10 jobs (10 × 3 LLM calls = 30 RPM, 62s window).
 """
 import json
 import os
 import re
 import sys
 import hashlib
+import time
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
-from src.llm.client import call_llm, call_eval_llm
+from src.llm.client import call_llm, call_eval_llm, MODEL_GPT
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
 from src.retrieval.hybrid import build_bm25_index, load_reranker, hybrid_retrieve, bm25_retrieve
 from src.generation.generate import generate_answer
@@ -24,27 +28,35 @@ from src.generation.generate import generate_answer
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 CACHE_PATH = os.path.join(BASE_DIR, "data", "processed", "eval_llm_cache.json")
 
+# LLM used for both answer generation and LLM-as-judge evaluation
+EVAL_MODEL = MODEL_GPT
+
+# Batch processing constants (30 RPM rate limit → 10 jobs × 3 LLM calls = 30/batch)
+EVAL_BATCH_SIZE = 10
+EVAL_WORKERS = 10
+BATCH_WINDOW_S = 62  # seconds; sleep out the remainder after each batch
+
+# Thread-safety locks
+_cache_lock = threading.Lock()
+_csv_lock = threading.Lock()
+
+# Fixed test set: Q2, Q3, Q4, Q6, Q9 from MANUAL_COMPARE_QA (specific NTSB queries
+# with known reference answers) + 7 general aviation queries = 12 total (within 10-20)
 EVAL_QUERIES = [
-    "What are common causes of engine failure during takeoff?",
-    "Cessna accidents in instrument meteorological conditions",
-    "How does pilot experience affect landing accident outcomes?",
-    "What role does weather play in fatal general aviation accidents?",
-    "Describe common factors in runway excursion incidents",
-    "What maintenance issues lead to in-flight structural failures?",
-    "How do fuel management errors contribute to aviation accidents?",
-    "What are the most frequent causes of controlled flight into terrain?",
-    "What factors contribute to loss of control during landing?",
-    "How does night flying increase accident risk for private pilots?",
-    "What are common causes of mid-air collisions in uncontrolled airspace?",
-    "Describe the role of fatigue in pilot error accidents",
-    "What types of mechanical failures cause forced landings?",
-    "How do icing conditions contribute to general aviation crashes?",
-    "What are the leading causes of helicopter accidents?",
-    "How does inadequate pre-flight inspection contribute to accidents?",
-    "What patterns exist in accidents involving student pilots?",
-    "How do crosswind conditions affect landing accident rates?",
-    "What role does air traffic control play in preventing mid-air collisions?",
-    "Describe common factors in accidents during instrument approaches",
+    # Specific NTSB queries (Q2, Q3, Q4, Q6, Q9)
+    "Based strictly on AAR-14/01 for Asiana Airlines Flight 214, what were the exact jumpseat designators for the two flight attendants ejected onto the runway?",
+    "Based strictly on AAR-14/01 for Asiana Airlines Flight 214, what substance visually obscured the fatally injured passenger from ARFF drivers?",
+    "Based strictly on AAR-14/01 for Asiana Airlines Flight 214, how many flight hours of experience did the PM have as Instructor Pilot in the Boeing 777 prior to the accident?",
+    "Based strictly on AAR-00/03 for TWA Flight 800, which debris field was the smallest and what were the exact fuselage station markers for the wreckage it contained?",
+    "Based strictly on AAR-00/01 for Korean Air Flight 801, what was the exact diameter of the severed fuel oil pipeline and approximately how many gallons of oil were spilled?",
+    # General aviation queries (G1-G7)
+    "How do crew coordination failures contribute to commercial aviation accidents?",
+    "What role does controlled flight into terrain play in fatal airline accidents?",
+    "How did instrument approach errors contribute to accidents in the NTSB reports?",
+    "What maintenance-related factors led to in-flight emergencies in these reports?",
+    "How did weather and environmental conditions affect accident outcomes?",
+    "What evacuation and survival factors are documented across these accident reports?",
+    "How does pilot situational awareness failure manifest in approach and landing accidents?",
 ]
 
 
@@ -211,17 +223,21 @@ def _save_cache(cache, cache_path=CACHE_PATH):
 
 
 def _cached_llm(prompt, system=None, cache=None):
-    """Call LLM with prompt-level memoization for faster repeated evaluations."""
+    """Call LLM (GPT) with prompt-level memoization. Thread-safe via _cache_lock."""
     if cache is None:
-        return call_eval_llm(prompt, system=system)
+        return call_llm(prompt, system=system, model=EVAL_MODEL)
 
     key_src = json.dumps({"system": system or "", "prompt": prompt}, ensure_ascii=False, sort_keys=True)
     key = hashlib.sha256(key_src.encode("utf-8")).hexdigest()
-    if key in cache:
-        return cache[key]
 
-    out = call_eval_llm(prompt, system=system)
-    cache[key] = out
+    with _cache_lock:
+        if key in cache:
+            return cache[key]
+
+    out = call_llm(prompt, system=system, model=EVAL_MODEL)
+
+    with _cache_lock:
+        cache[key] = out
     return out
 
 
@@ -280,7 +296,7 @@ def compute_faithfulness(answer, context_texts, cache=None):
 # ── Relevancy ─────────────────────────────────────────────────────────────────
 
 def generate_alternate_queries(query, n=3):
-    """Generate n alternate phrasings of the query using the LLM."""
+    """Generate n alternate phrasings of the query using the LLM (GPT)."""
     prompt = f"""You are an aviation safety research assistant.
 Your task is to generate {n} alternative phrasings of the following question about aviation accidents.
 
@@ -296,7 +312,7 @@ Your task is to generate {n} alternative phrasings of the following question abo
 
 Example: ["alt 1", "alt 2", "alt 3"]"""
     try:
-        return _parse_json(call_llm(prompt))
+        return _parse_json(call_llm(prompt, model=EVAL_MODEL))
     except (json.JSONDecodeError, ValueError):
         return []
 def _extract_final_answer(answer):
@@ -398,128 +414,190 @@ def _load_completed(output_path):
 
 
 def _append_result(result, output_path):
-    """Append a single result dict to the CSV (create header if new file)."""
+    """Append a single result dict to the CSV. Thread-safe via _csv_lock."""
     row = {k: v for k, v in result.items() if k not in ("faith_details", "rel_alternates")}
     df = pd.DataFrame([row])
-    write_header = not os.path.exists(output_path)
-    df.to_csv(output_path, mode="a", header=write_header, index=False)
+    with _csv_lock:
+        write_header = not os.path.exists(output_path)
+        df.to_csv(output_path, mode="a", header=write_header, index=False)
+
+
+def _eval_single_job(args):
+    """Execute one (query, strategy, mode) evaluation job.
+
+    Runs retrieve → generate (GPT) → faithfulness → relevancy and records
+    retrieval_time, generation_time, and total_time for §3D report metrics.
+    Thread-safe: uses module-level _cache_lock for shared cache access.
+    """
+    query        = args["query"]
+    strategy     = args["strategy"]
+    mode         = args["mode"]
+    jina_model   = args["jina_model"]
+    index        = args["index"]
+    bm25_cache   = args["bm25_cache"]
+    reranker     = args["reranker"]
+    top_k        = args["top_k"]
+    compute_faith = args["compute_faith"]
+    compute_rel  = args["compute_rel"]
+    cache        = args["cache"]
+    use_hyde     = args["use_hyde"]
+    allow_bm25_fallback = args["allow_bm25_fallback"]
+
+    t_total = time.perf_counter()
+
+    # ── Retrieve ────────────────────────────────────────────────────────────────
+    t_ret = time.perf_counter()
+    try:
+        if mode == "hybrid" and bm25_cache and strategy in bm25_cache and reranker:
+            bm25, chunks = bm25_cache[strategy]
+            matches = hybrid_retrieve(
+                query, strategy, top_k=top_k,
+                model=jina_model, index=index,
+                bm25=bm25, chunks=chunks, reranker=reranker,
+                use_hyde=use_hyde,
+            )
+        else:
+            matches = retrieve(query, strategy, top_k=top_k, model=jina_model, index=index)
+    except Exception as e:
+        if allow_bm25_fallback and bm25_cache and strategy in bm25_cache:
+            print(f"  Warning: Pinecone failed [{mode}/{strategy}] -> BM25 fallback. {e}")
+            bm25, chunks = bm25_cache[strategy]
+            matches = bm25_retrieve(query, bm25, chunks, top_k=top_k)
+        else:
+            raise
+    retrieval_time = round(time.perf_counter() - t_ret, 3)
+
+    context_texts = [
+        m.metadata.get("text", "") if hasattr(m, "metadata") else m.get("text", "")
+        for m in matches
+    ]
+
+    # ── Generate (GPT) ──────────────────────────────────────────────────────────
+    t_gen = time.perf_counter()
+    try:
+        answer = generate_answer(query, matches, llm_provider="gpt")
+    except Exception as e:
+        print(f"  Warning: generation failed [{mode}/{strategy}] -> placeholder. {e}")
+        answer = "Generation unavailable due to LLM connection error."
+    generation_time = round(time.perf_counter() - t_gen, 3)
+    total_time = round(time.perf_counter() - t_total, 3)
+
+    ret_metrics = eval_retrieval(matches)
+
+    # ── Faithfulness (GPT-as-judge) ──────────────────────────────────────────────
+    if compute_faith:
+        try:
+            faith_score, faith_details = compute_faithfulness(answer, context_texts, cache=cache)
+        except Exception as e:
+            print(f"  Warning: faithfulness failed [{mode}/{strategy}] -> 0.0. {e}")
+            faith_score, faith_details = 0.0, []
+    else:
+        faith_score, faith_details = 0.0, []
+
+    # ── Relevancy (GPT-as-judge + Jina embeddings) ───────────────────────────────
+    if compute_rel:
+        try:
+            rel_score, rel_alternates = compute_relevancy(query, answer, jina_model, cache=cache)
+        except Exception as e:
+            print(f"  Warning: relevancy failed [{mode}/{strategy}] -> 0.0. {e}")
+            rel_score, rel_alternates = 0.0, []
+    else:
+        rel_score, rel_alternates = 0.0, []
+
+    return {
+        "query":           query,
+        "strategy":        strategy,
+        "mode":            mode,
+        "answer":          answer,
+        "num_chunks":      len(matches),
+        **ret_metrics,
+        "retrieval_time":  retrieval_time,
+        "generation_time": generation_time,
+        "total_time":      total_time,
+        "faithfulness":    round(faith_score, 3),
+        "relevancy":       round(rel_score, 3),
+        "faith_details":   faith_details,
+        "rel_alternates":  rel_alternates,
+    }
 
 
 def run_evaluation(queries, strategies, jina_model, index, mode="semantic",
                    bm25_cache=None, reranker=None, output_path=None,
-                   top_k=6, compute_faith=True, compute_rel=True,
-                   cache=None, use_hyde=False,
-                   allow_bm25_fallback=False):
-    """Run evaluation across all queries and strategies.
+                   top_k=15, compute_faith=True, compute_rel=True,
+                   cache=None, use_hyde=False, allow_bm25_fallback=False,
+                   workers=EVAL_WORKERS, batch_size=EVAL_BATCH_SIZE):
+    """Run evaluation across all queries and strategies in parallel batches.
+
+    Batches of `batch_size` jobs run with `workers` threads. After each batch
+    (except the last) we sleep out the remainder of a 62-second window to stay
+    within the 30 RPM rate limit (10 jobs × 3 LLM calls = 30 calls/batch).
 
     mode: "semantic" or "hybrid"
-    output_path: if provided, results are saved incrementally and
-                 already-completed entries are skipped (resume support).
+    output_path: incremental CSV save with resume support.
     Returns list of result dicts.
     """
     completed = _load_completed(output_path) if output_path else set()
-    results = []
 
-    pinecone_available = True
-
-    for qi, query in enumerate(queries):
+    jobs = []
+    for query in queries:
         for strategy in strategies:
-            # Skip already-completed entries
             if (query, strategy, mode) in completed:
-                print(f"  Skipping (already done): [{mode}/{strategy}] {query[:50]}...")
+                print(f"  Skipping (done): [{mode}/{strategy}] {query[:50]}...")
                 continue
+            jobs.append({
+                "query": query, "strategy": strategy, "mode": mode,
+                "jina_model": jina_model, "index": index,
+                "bm25_cache": bm25_cache, "reranker": reranker,
+                "top_k": top_k, "compute_faith": compute_faith,
+                "compute_rel": compute_rel, "cache": cache,
+                "use_hyde": use_hyde, "allow_bm25_fallback": allow_bm25_fallback,
+            })
 
-            label = f"[{mode}/{strategy}] ({qi+1}/{len(queries)}) {query[:50]}..."
-            print(f"  Evaluating: {label}")
+    if not jobs:
+        print("  All entries already completed.")
+        return []
 
-            # Retrieve
-            used_fallback = False
-            if pinecone_available:
+    total = len(jobs)
+    results = []
+    done = 0
+    n_batches = (total + batch_size - 1) // batch_size
+
+    for batch_idx, batch_start in enumerate(range(0, total, batch_size), 1):
+        batch = jobs[batch_start:batch_start + batch_size]
+        is_last = batch_idx == n_batches
+        t_batch = time.perf_counter()
+
+        print(f"\n  Batch {batch_idx}/{n_batches}: "
+              f"jobs {batch_start+1}–{batch_start+len(batch)} of {total}")
+
+        with ThreadPoolExecutor(max_workers=min(workers, len(batch))) as ex:
+            future_to_job = {ex.submit(_eval_single_job, job): job for job in batch}
+            for fut in as_completed(future_to_job):
+                done += 1
+                job = future_to_job[fut]
                 try:
-                    if mode == "hybrid" and bm25_cache and reranker:
-                        bm25, chunks = bm25_cache[strategy]
-                        matches = hybrid_retrieve(
-                            query, strategy, top_k=top_k,
-                            model=jina_model, index=index,
-                            bm25=bm25, chunks=chunks, reranker=reranker,
-                            use_hyde=use_hyde,
-                        )
-                    else:
-                        matches = retrieve(query, strategy, top_k=top_k, model=jina_model, index=index)
+                    result = fut.result()
+                    results.append(result)
+                    if output_path:
+                        _append_result(result, output_path)
+                    print(
+                        f"  [{done:>3}/{total}] [{mode}/{result['strategy']}] "
+                        f"faith={result['faithfulness']:.2f} rel={result['relevancy']:.2f} "
+                        f"ret={result['retrieval_time']:.1f}s gen={result['generation_time']:.1f}s"
+                    )
                 except Exception as e:
-                    can_fallback = allow_bm25_fallback and bm25_cache and strategy in bm25_cache
-                    if not can_fallback:
-                        raise
-                    used_fallback = True
-                    pinecone_available = False
-                    print(f"  Warning: Pinecone retrieval failed for [{mode}/{strategy}] -> using BM25 fallback for the rest of this run. Error: {e}")
+                    print(f"  [{done:>3}/{total}] [{mode}/{job['strategy']}] ERROR: {e}")
 
-            if (not pinecone_available) or used_fallback:
-                can_fallback = bm25_cache and strategy in bm25_cache
-                if not can_fallback:
-                    raise RuntimeError(f"BM25 fallback requested but cache missing for strategy '{strategy}'")
-                bm25, chunks = bm25_cache[strategy]
-                matches = bm25_retrieve(query, bm25, chunks, top_k=top_k)
+        # Persist cache after each batch (not per-result to avoid lock contention)
+        if cache is not None:
+            _save_cache(cache)
 
-            # Extract context texts
-            context_texts = []
-            for m in matches:
-                if hasattr(m, "metadata"):
-                    context_texts.append(m.metadata.get("text", ""))
-                else:
-                    context_texts.append(m.get("text", ""))
-
-            # Generate answer
-            try:
-                answer = generate_answer(query, matches)
-            except Exception as e:
-                print(f"  Warning: generation failed for [{mode}/{strategy}] -> storing placeholder answer. Error: {e}")
-                answer = "Generation unavailable due to LLM connection error."
-
-            # Retrieval metrics
-            ret_metrics = eval_retrieval(matches)
-
-            # Faithfulness
-            if compute_faith:
-                try:
-                    faith_score, faith_details = compute_faithfulness(answer, context_texts, cache=cache)
-                except Exception as e:
-                    print(f"  Warning: faithfulness eval failed for [{mode}/{strategy}] -> defaulting to 0.0. Error: {e}")
-                    faith_score, faith_details = 0.0, []
-            else:
-                faith_score, faith_details = 0.0, []
-
-            # Relevancy
-            if compute_rel:
-                try:
-                    rel_score, rel_alternates = compute_relevancy(query, answer, jina_model, cache=cache)
-                except Exception as e:
-                    print(f"  Warning: relevancy eval failed for [{mode}/{strategy}] -> defaulting to 0.0. Error: {e}")
-                    rel_score, rel_alternates = 0.0, []
-            else:
-                rel_score, rel_alternates = 0.0, []
-
-            result = {
-                "query": query,
-                "strategy": strategy,
-                "mode": mode,
-                "answer": answer,
-                "num_chunks": len(matches),
-                **ret_metrics,
-                "faithfulness": round(faith_score, 3),
-                "relevancy": round(rel_score, 3),
-                "faith_details": faith_details,
-                "rel_alternates": rel_alternates,
-            }
-            results.append(result)
-
-            # Save incrementally
-            if output_path:
-                _append_result(result, output_path)
-
-            # Persist cache incrementally so interrupted runs still benefit.
-            if cache is not None:
-                _save_cache(cache)
+        if not is_last:
+            elapsed = time.perf_counter() - t_batch
+            wait = max(0.0, BATCH_WINDOW_S - elapsed)
+            if wait > 0:
+                print(f"  [rate-limit] sleeping {wait:.1f}s before next batch...")
+                time.sleep(wait)
 
     return results
 
@@ -547,9 +625,13 @@ def print_detailed_examples(results, n=3):
 
 
 def summarize(results):
-    """Group results by strategy+mode and compute mean scores."""
+    """Group results by strategy+mode and compute mean scores including timing (§3D)."""
     df = pd.DataFrame(results)
-    cols = ["avg_score", "num_unique_reports", "faithfulness", "relevancy"]
+    cols = [
+        "avg_score", "num_unique_reports",
+        "faithfulness", "relevancy",
+        "retrieval_time", "generation_time", "total_time",
+    ]
     existing = [c for c in cols if c in df.columns]
     summary = df.groupby(["mode", "strategy"])[existing].mean().round(3)
     return summary
@@ -644,7 +726,7 @@ def main():
                         help="Delete existing results and start from scratch")
     parser.add_argument("--max-queries", type=int, default=0,
                         help="Limit number of evaluation queries (0 = all)")
-    parser.add_argument("--top-k", type=int, default=6,
+    parser.add_argument("--top-k", type=int, default=15,
                         help="Number of chunks to retrieve per query")
     parser.add_argument("--skip-faithfulness", action="store_true",
                         help="Skip faithfulness scoring for faster iteration")
