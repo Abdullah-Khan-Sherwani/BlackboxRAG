@@ -13,7 +13,7 @@ from sentence_transformers import CrossEncoder
 
 from src.llm.client import call_eval_llm
 from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
-from src.retrieval.report_mapper import AVAILABLE_REPORTS
+from src.retrieval.report_mapper import AVAILABLE_REPORTS, get_exec_summary
 
 
 @dataclass
@@ -194,7 +194,7 @@ def _soft_report_budget(ranked, top_k, dominant_report, keep_ratio=0.8):
 
 
 
-def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
+def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3, exec_summary=""):
     """Rerank candidates using a cross-encoder and return top-k.
 
     For single-event queries the CE reranker is the sole authority on relevance:
@@ -203,10 +203,17 @@ def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
     - min_unique_reports is reduced to 1 so diversity logic never injects
       irrelevant reports when the CE already found the right one.
     - _soft_report_budget is NOT applied after selection; the CE ranking stands.
+
+    exec_summary: if provided, appended to the query for cross-encoder scoring so
+    the model has crash-level context when comparing query vs chunk relevance.
     """
     if not candidates:
         return []
-    pairs = [[query, c["text"]] for c in candidates]
+    # Augment the query with executive summary context for better CE scoring.
+    rerank_query = query
+    if exec_summary:
+        rerank_query = f"{query} [Accident context: {exec_summary[:300]}]"
+    pairs = [[rerank_query, c["text"]] for c in candidates]
     ce_scores = reranker.predict(pairs)
     for i, score in enumerate(ce_scores):
         candidates[i]["score"] = float(score)
@@ -290,6 +297,40 @@ def rerank(query, candidates, reranker, top_k=10, min_unique_reports=3):
                 break
 
     return selected
+
+
+_BM25_STOPWORDS = {
+    "the", "a", "an", "and", "or", "of", "to", "in", "is", "was", "were", "be",
+    "been", "being", "have", "has", "had", "do", "does", "did", "will", "would",
+    "could", "should", "may", "might", "shall", "can", "that", "this", "these",
+    "those", "with", "for", "on", "at", "by", "from", "as", "into", "through",
+    "during", "about", "its", "it", "are", "not", "but", "also", "which", "who",
+    "their", "they", "he", "she", "we", "i", "you", "his", "her", "our", "all",
+    "each", "both", "more", "other", "than", "then", "so", "if", "no", "up",
+    "out", "one", "two", "three", "four", "five", "per", "any", "some", "such",
+}
+
+
+def _extract_bm25_terms(summary: str, max_terms: int = 25) -> list[str]:
+    """Extract distinctive keyword terms from an executive summary for BM25 expansion.
+
+    Filters out stopwords and very short tokens; returns up to max_terms unique
+    terms that add lexical signal beyond what the original query already contains.
+    """
+    tokens = re.findall(r"[a-zA-Z0-9][\w\-]*", summary.lower())
+    seen: set = set()
+    terms = []
+    for t in tokens:
+        if len(t) < 4:
+            continue
+        if t in _BM25_STOPWORDS:
+            continue
+        if t not in seen:
+            seen.add(t)
+            terms.append(t)
+        if len(terms) >= max_terms:
+            break
+    return terms
 
 
 def expand_query_variants(query):
@@ -679,12 +720,26 @@ def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
     queries = deduped[:5]
     debug["query_variants"] = list(queries)
 
+    # Detect target report and build BM25-expanded query using exec summary key terms.
+    # Semantic retrieval uses the original query; BM25 gets the term-expanded version.
+    from src.retrieval.report_mapper import detect_report_from_query
+    target_report = detect_report_from_query(query)
+    exec_summary = get_exec_summary(target_report) if target_report else ""
+
+    bm25_expansion = ""
+    if exec_summary:
+        extra_terms = _extract_bm25_terms(exec_summary)
+        if extra_terms:
+            bm25_expansion = " " + " ".join(extra_terms)
+            print(f"[BM25 expansion] +{len(extra_terms)} terms from exec summary: {extra_terms[:8]}...")
+
     ranked_lists = []
     for q in queries:
-        # Execute lexical and semantic retrieval in parallel per query variant.
+        # Semantic uses original query; BM25 gets exec-summary term expansion.
+        bm25_q = q + bm25_expansion if bm25_expansion else q
         with ThreadPoolExecutor(max_workers=2) as executor:
             fut_sem = executor.submit(retrieve, q, strategy, semantic_top_k, model, index)
-            fut_bm25 = executor.submit(bm25_retrieve, q, bm25, chunks, bm25_top_k)
+            fut_bm25 = executor.submit(bm25_retrieve, bm25_q, bm25, chunks, bm25_top_k)
             semantic_results = fut_sem.result()
             bm25_results = fut_bm25.result()
         ranked_lists.append(semantic_results)
@@ -694,7 +749,12 @@ def hybrid_retrieve(query, strategy, top_k=10, model=None, index=None,
     fused = rrf_fuse_lists(ranked_lists)
 
     # Rerank
-    results = rerank(query, fused, reranker, top_k=top_k, min_unique_reports=min_unique_reports)
+    results = rerank(query, fused, reranker, top_k=top_k, min_unique_reports=min_unique_reports,
+                     exec_summary=exec_summary)
+
+    # Re-enrich final results with a wider window for the LLM which has a
+    # much larger context budget.  This re-reads from the original chunks
+    # (keyed by chunk_id) so there's no double-enrichment.
     results = enrich_with_neighbors(results, chunks, window=neighbor_window)
 
     if return_debug:

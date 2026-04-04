@@ -63,6 +63,69 @@ def _load_available_reports():
 AVAILABLE_REPORTS = _load_available_reports()
 
 
+# ---------------------------------------------------------------------------
+# Executive summary cache
+# ---------------------------------------------------------------------------
+
+_EXEC_SUMMARIES: dict = {}
+_EXEC_SUMMARIES_LOADED = False
+
+
+def load_exec_summaries() -> dict:
+    """Load executive summaries from section chunks, indexed by report_id.
+
+    Returns a dict mapping report_id (e.g. 'AAR0001') to the full executive
+    summary text for that report.  Loaded once and cached for the process.
+    """
+    global _EXEC_SUMMARIES, _EXEC_SUMMARIES_LOADED
+    if _EXEC_SUMMARIES_LOADED:
+        return _EXEC_SUMMARIES
+
+    section_path = BASE_DIR / "data" / "processed" / "chunks_md_section.json"
+    try:
+        with open(section_path, encoding="utf-8") as f:
+            chunks = json.load(f)
+        for chunk in chunks:
+            if chunk.get("section_title", "").lower() == "executive summary":
+                rid = chunk.get("report_id", "").strip()
+                if not rid:
+                    continue
+                text = chunk.get("text", "")
+                # Strip the redundant "Section: Executive Summary" header if present
+                text = re.sub(r"(?i)^section:\s*executive summary\s*\n?", "", text).strip()
+                if rid in _EXEC_SUMMARIES:
+                    _EXEC_SUMMARIES[rid] += "\n" + text
+                else:
+                    _EXEC_SUMMARIES[rid] = text
+    except Exception as e:
+        print(f"[ExecSummary] Could not load: {e}")
+
+    _EXEC_SUMMARIES_LOADED = True
+    return _EXEC_SUMMARIES
+
+
+def _normalize_report_id(report_id: str) -> str:
+    """Normalize 'NTSB/AAR-01/02' → 'AAR0102' to match section chunk keys."""
+    rid = report_id.strip()
+    rid = re.sub(r"^NTSB/", "", rid, flags=re.IGNORECASE)
+    rid = rid.replace("-", "").replace("/", "")
+    return rid
+
+
+def get_exec_summary(report_id: str) -> str:
+    """Return the executive summary text for a given report_id, or ''.
+
+    Accepts both section-chunk keys ('AAR0102') and NTSB format ('NTSB/AAR-01/02').
+    """
+    summaries = load_exec_summaries()
+    # Direct lookup first
+    if report_id in summaries:
+        return summaries[report_id]
+    # Normalized lookup
+    normalized = _normalize_report_id(report_id)
+    return summaries.get(normalized, "")
+
+
 def detect_report_from_query(query: str) -> str:
     """
     Detect which NTSB report a query targets using intelligent fallback strategies.

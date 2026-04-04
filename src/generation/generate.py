@@ -14,6 +14,7 @@ from src.retrieval.query import load_model, init_pinecone, retrieve, available_s
 from src.retrieval.hybrid import (
     build_bm25_index, load_reranker, hybrid_retrieve,
 )
+from src.retrieval.report_mapper import get_exec_summary
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -115,6 +116,34 @@ def build_prompt(query, retrieved_chunks):
 
     context_str = "\n\n".join(context_blocks)
 
+    # Prepend executive summaries for each unique report found in the chunks.
+    # This gives the LLM a high-level crash overview before reading detailed chunks.
+    seen_rids: set = set()
+    overview_blocks = []
+    for chunk in retrieved_chunks:
+        rid = (
+            _get_meta(chunk, "report_id", "")
+            or _get_meta(chunk, "ntsb_no", "")
+            or _get_meta(chunk, "entity_id", "")
+        ).strip()
+        if rid and rid not in seen_rids:
+            seen_rids.add(rid)
+            summary = get_exec_summary(rid)
+            if summary:
+                # Cap at 3000 chars to avoid overwhelming the context window.
+                # For short reports this includes the full overview + probable cause;
+                # for long reports it covers the crash scenario (probable cause
+                # comes from the retrieved detail chunks instead).
+                overview_blocks.append(f"[REPORT OVERVIEW: {rid}]\n{summary[:3000]}")
+
+    overview_str = ""
+    if overview_blocks:
+        overview_str = (
+            "--- Executive Summaries (high-level crash context) ---\n"
+            + "\n\n".join(overview_blocks)
+            + "\n\n"
+        )
+
     # Anti-merge guard: for single-event questions, avoid combining facts across
     # different report ids when retrieval is mixed.
     report_ids = set(_report_ids(retrieved_chunks))
@@ -129,7 +158,7 @@ def build_prompt(query, retrieved_chunks):
             "If key facts conflict across reports, state the ambiguity and ask for a specific report/flight identifier."
         )
 
-    user_prompt = f"--- Context ---\n{context_str}{guard}\n\n--- Question ---\n{query}"
+    user_prompt = f"--- Context ---\n{overview_str}{context_str}{guard}\n\n--- Question ---\n{query}"
     return SYSTEM_PROMPT, user_prompt
 
 
