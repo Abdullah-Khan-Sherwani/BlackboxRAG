@@ -58,6 +58,7 @@ MANUAL_COMPARE_QA = [
         "id": "Q2",
         "question": "Based strictly on the NTSB Aircraft Accident Report AAR-14/01 for Asiana Airlines Flight 214, detail the survival and evacuation factors: When the tail section of the aircraft struck the seawall and separated from the fuselage, two flight attendants seated in the aft cabin were ejected onto the runway and survived. What were the exact jumpseat designators for these two flight attendants?",
         "reference_answer": "The two ejected flight attendants were seated in jumpseats 4L and 4R.",
+        
     },
     {
         "id": "Q3",

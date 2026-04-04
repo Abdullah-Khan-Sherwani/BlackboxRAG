@@ -29,9 +29,18 @@ _chunks_cache = {}
 
 
 def _canonical_strategy(strategy: str) -> str:
-    """Map legacy names to the canonical markdown strategies."""
+    """Map legacy names to the canonical markdown strategies (for local files)."""
     if strategy == "md_recursive":
         return "md_recursive"
+    if strategy in {"parent", "parent_child"}:
+        return "parent_child"
+    return strategy
+
+
+def _pinecone_strategy(strategy: str) -> str:
+    """Map strategy names to the Pinecone metadata filter value."""
+    if strategy == "md_recursive":
+        return "recursive_3/4/26"
     if strategy in {"parent", "parent_child"}:
         return "parent_child"
     return strategy
@@ -176,6 +185,7 @@ def retrieve(query, strategy, top_k=5, model=None, index=None, ntsb_override=Non
             of running detect_report_from_query() on the query text.
     """
     canonical_strategy = _canonical_strategy(strategy)
+    pinecone_strategy = _pinecone_strategy(strategy)
 
     runtime_device = getattr(model, "_runtime_device", "cpu") if model is not None else "cpu"
     try:
@@ -198,25 +208,37 @@ def retrieve(query, strategy, top_k=5, model=None, index=None, ntsb_override=Non
 
     # Build filter: includes strategy and optional NTSB number filter
     if ntsb_override:
-        filter_dict = {"$and": [
-            {"strategy": {"$eq": canonical_strategy}},
-            {"ntsb_no": {"$eq": ntsb_override}},
-        ]}
+        if isinstance(ntsb_override, list):
+            filter_dict = {"$and": [
+                {"strategy": {"$eq": pinecone_strategy}},
+                {"ntsb_no": {"$in": ntsb_override}},
+            ]}
+        else:
+            filter_dict = {"$and": [
+                {"strategy": {"$eq": pinecone_strategy}},
+                {"ntsb_no": {"$eq": ntsb_override}},
+            ]}
     else:
-        filter_dict = get_pinecone_filter(query, canonical_strategy)
+        filter_dict = get_pinecone_filter(query, pinecone_strategy)
     
-    try:
-        results = index.query(
-            vector=query_embedding[0].tolist(),
-            top_k=top_k,
-            include_metadata=True,
-            filter=filter_dict,
-        )
-    except Exception as e:
-        raise RuntimeError(
-            "Pinecone query failed (network/DNS or service issue). "
-            "Check internet/VPN and Pinecone availability, or run evaluation with BM25 fallback."
-        ) from e
+    import time as _time
+    _max_retries = 3
+    for _attempt in range(1, _max_retries + 1):
+        try:
+            results = index.query(
+                vector=query_embedding[0].tolist(),
+                top_k=top_k,
+                include_metadata=True,
+                filter=filter_dict,
+            )
+            break
+        except Exception as e:
+            if _attempt == _max_retries:
+                raise RuntimeError(
+                    "Pinecone query failed after retries (network/DNS or service issue). "
+                    "Check internet/VPN and Pinecone availability, or run evaluation with BM25 fallback."
+                ) from e
+            _time.sleep(2 ** _attempt)
 
     # Attach full text from local storage.
     # Each Pinecone vector carries a 'strategy' metadata field. Route each match
