@@ -12,6 +12,9 @@ from pinecone import Pinecone
 
 from src.retrieval.report_mapper import get_pinecone_filter
 
+# Section titles that are structural noise and should never surface as evidence.
+BLOCKED_SECTION_TITLES: frozenset = frozenset({"Contents", "CONTENT"})
+
 INDEX_NAME = "ntsb-rag"
 MODEL_NAME = "jinaai/jina-embeddings-v5-text-nano"
 
@@ -290,7 +293,10 @@ def retrieve(query, strategy, top_k=5, model=None, index=None, ntsb_override=Non
             if field in local and not match.metadata.get(field):
                 match.metadata[field] = local[field]
 
-    return results.matches
+    return [
+        m for m in results.matches
+        if m.metadata.get("section_title", "") not in BLOCKED_SECTION_TITLES
+    ]
 
 
 def print_results(results, query):

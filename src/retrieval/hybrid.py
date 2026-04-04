@@ -12,7 +12,7 @@ from rank_bm25 import BM25Okapi
 from sentence_transformers import CrossEncoder
 
 from src.llm.client import call_eval_llm
-from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies
+from src.retrieval.query import load_model, init_pinecone, retrieve, available_strategies, BLOCKED_SECTION_TITLES
 from src.retrieval.report_mapper import AVAILABLE_REPORTS, get_exec_summary
 
 
@@ -74,15 +74,20 @@ def build_bm25_index(strategy):
 
 
 def bm25_retrieve(query, bm25, chunks, top_k=20):
-    """Return top-k chunks by BM25 score."""
+    """Return top-k chunks by BM25 score, excluding blocked section titles."""
     scores = bm25.get_scores(query.lower().split())
-    top_indices = scores.argsort()[::-1][:top_k]
+    top_indices = scores.argsort()[::-1]
     results = []
     for idx in top_indices:
-        chunk = dict(chunks[idx])
-        chunk["score"] = float(scores[idx])
-        chunk["retrieval_strategy"] = "bm25"
-        results.append(chunk)
+        chunk = chunks[idx]
+        if chunk.get("section_title", "") in BLOCKED_SECTION_TITLES:
+            continue
+        out = dict(chunk)
+        out["score"] = float(scores[idx])
+        out["retrieval_strategy"] = "bm25"
+        results.append(out)
+        if len(results) >= top_k:
+            break
     return results
 
 
