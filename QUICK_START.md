@@ -271,6 +271,63 @@ Results saved to:
 
 ---
 
+## Testing & Tuning Scripts (Apr 3–4, 2026)
+
+New standalone test scripts for parameter optimization and augmentation evaluation:
+
+### `param_sweep.py`
+Tests 7 stacking combos (baseline → mq+hyde+llm_k) and TOP_K values (5, 10, 15, 20) on 2 focused questions, pre-generating all 6 augmentation docs in parallel, measuring RRF scores and target-report hit rates.
+- **Run:** `venv/Scripts/python param_sweep.py`
+- **Output:** `data/param_sweep_results.csv`
+- **Finding:** `mq+hyde` at TOP_K=10 is optimal; adding llm_k provides <1% improvement.
+
+### `chunk_retrieval_test.py`
+Tests all 7 stacking combos × 2 strategies (md_recursive, section) on 2 questions, pre-generates augmentation docs in parallel, prints top-10 chunks with `[ANSWER]` flags for chunks containing answer keywords (no answer generation).
+- **Run:** `venv/Scripts/python chunk_retrieval_test.py`
+- **Output:** Chunk rankings and answer-hit flags per combo per strategy.
+- **Finding:** HyDE + section best for specific detail questions (AFFF foam); mq+hyde + md_recursive best overall.
+
+### `test_llm_knowledge_v2.py`
+Fast 4-mode comparison (baseline, multi_query, hyde, llm_knowledge) on 3 specific questions using md_recursive + BM25+semantic RRF, no answer generation, just retrieval scores.
+- **Run:** `venv/Scripts/python test_llm_knowledge_v2.py`
+- **Output:** `data/method_comparison_results.csv` with pivot table of avg RRF scores by mode.
+- **Finding:** multi_query 5.5x better than baseline; hyde 2.5x; llm_knowledge 1.25x.
+
+### `full_eval.py`
+Comprehensive evaluation on all 10 MANUAL_COMPARE_QA questions + 3 general questions, tests 4 combos × 2 strategies = 104 answer generations, pre-generates all 26 augmentation docs in parallel, parallelizes answer generation in batches of 6 workers.
+- **Run:** `venv/Scripts/python full_eval.py`
+- **Output:** `data/full_eval_results.csv` with full answers for all 104 combos (designed for manual review).
+- **Key Result:** md_recursive + mq+hyde scores ~77% on factual questions; reference answers for Q5, Q7, Q8, Q9, Q10 are wrong in eval set.
+
+---
+
+## Recent Changes (Apr 3–4, 2026)
+
+### `src/ui/app.py` — Parallelized Augmentation Generation
+**What changed:** Multi-query, HyDE, and LLM knowledge augmentation calls now fire simultaneously using `ThreadPoolExecutor(max_workers=3)` instead of sequentially.
+- **Before:** 3 sequential spinners (mq → hyde → llm_k), wall-clock time ~6–8 minutes for all.
+- **After:** 1 combined spinner "Generating multi-query + HyDE + LLM knowledge (parallel)...", wall-clock time ~2–3 minutes (bottlenecked by slowest call, typically NVIDIA Nemotron).
+- **Code:** Lines 157–197, ThreadPoolExecutor fires all enabled augmentations as futures, waits for all to complete in a single spinner, then unpacks results.
+- **Impact:** ~40% latency reduction on queries using 2+ augmentations.
+
+### New Test Files (Git-tracked)
+- `param_sweep.py` — Parameter optimization (TOP_K, stacking combos)
+- `chunk_retrieval_test.py` — Chunk ranking analysis with answer-hit detection
+- `test_llm_knowledge_v2.py` — Fast baseline comparison test
+- `full_eval.py` — Full evaluation suite on 13 questions, 104 answer generations
+
+### Recommended Production Configuration
+Based on `full_eval.py` results:
+- **Strategy:** `md_recursive` (89k chunks, best semantic coverage)
+- **Augmentation:** Enable `multi_query` + `hyde`; disable `llm_knowledge` (adds latency, minimal ROI)
+- **Top-K:** 10
+- **SEM_TOP_K / BM25_TOP_K:** 60 each
+- **Neighbor window:** 2
+- **Cross-encoder:** Yes (`qnli-distilroberta-base`)
+- **Expected accuracy:** ~77% on factual questions where answer chunk ranks in top-10
+
+---
+
 ## Re-upserting Section Chunks (only needed if Pinecone index is reset)
 
 ```bash
