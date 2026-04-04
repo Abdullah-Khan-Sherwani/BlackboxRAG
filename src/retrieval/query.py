@@ -30,7 +30,7 @@ _chunks_cache = {}
 
 def _canonical_strategy(strategy: str) -> str:
     """Map legacy names to the canonical markdown strategies (for local files)."""
-    if strategy == "md_recursive":
+    if strategy in {"md_recursive", "recursive_3/4/26"}:
         return "md_recursive"
     if strategy in {"parent", "parent_child"}:
         return "parent_child"
@@ -261,7 +261,13 @@ def retrieve(query, strategy, top_k=5, model=None, index=None, ntsb_override=Non
     for match in results.matches:
         match_strategy = match.metadata.get("strategy") or canonical_strategy
         store = _get_local_store(match_strategy)
-        local = store["by_id"].get(match.id) or {}
+        # Strip legacy strategy prefixes added during old upsert runs (e.g. "r3426_")
+        local_id = match.id
+        if not store["by_id"].get(local_id):
+            underscore = local_id.find("_")
+            if underscore != -1:
+                local_id = local_id[underscore + 1:]
+        local = store["by_id"].get(local_id) or {}
 
         # Provenance marker for semantic retrieval path.
         match.metadata["retrieval_strategy"] = "semantic"
