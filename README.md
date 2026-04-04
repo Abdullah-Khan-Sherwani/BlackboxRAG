@@ -1,3 +1,15 @@
+---
+title: BlackBox
+emoji: ✈️
+colorFrom: blue
+colorTo: gray
+sdk: streamlit
+sdk_version: "1.44.0"
+python_version: "3.11"
+app_file: src/ui/app.py
+pinned: false
+---
+
 # BlackboxRAG
 
 Retrieval-Augmented Generation over 101 NTSB aviation accident reports (2016–2023).
