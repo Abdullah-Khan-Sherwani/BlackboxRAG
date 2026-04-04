@@ -10,10 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
         with:
-          fetch-depth: 0
-          lfs: true
+          fetch-depth: 1
 
       - name: Push to HF Space
         run: |
           git remote add hf https://AbdullahKhanSherwani:${{ secrets.HUGGING_FACE_TOKEN }}@huggingface.co/spaces/AbdullahKhanSherwani/BlackBox
-          git push hf main --force
+          git push hf HEAD:main --force
