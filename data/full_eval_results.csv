@@ -1,0 +1,740 @@
+question_id,strategy,combo,reports,answer
+Q1,section,baseline,"['NTSB/AAR-09/03', 'NTSB/AAR-10/03', 'NTSB/AAR-18/01']","- Evidence:
+  - The right‑engine failure (“bang” sound) was recorded at time 0. The captain initiated the engine‑fire checklist at 14:32:04.1, which was **20.6 seconds after** the “bang” sound [NTSB: AAR-18/01].
+  - The fuel‑shutoff (spar) valve for the right engine was closed as part of that engine‑fire checklist [NTSB: AAR-18/01].
+
+- Answer:
+  - **20.6 seconds** elapsed between the start of the right‑engine failure and the final closure of the spar (fuel‑shutoff) valve."
+Q1,md_recursive,baseline,"['NTSB/AAR-06/03', 'NTSB/AAR-09/03', 'NTSB/AAR-18/01', 'NTSB/AAR-19/03']","**Evidence**
+
+- The FDR shows the aircraft stopped at **1432:09.8**, which was **26.4 seconds** after the right‑engine failure began【NTSB:AAR-18/01】.  
+- The engine‑fire checklist’s Step 3 (fuel‑control switch cut‑off) was performed **about 4 seconds** after the captain called “checklist”【NTSB:AAR-18/01】.  
+- No excerpt provides the exact timestamp of when the **spar valve** (fuel‑cutoff valve) was finally closed, nor does it relate that action to the failure‑onset time.
+
+**Answer**
+
+Insufficient context – the provided excerpts do not contain the precise FDR‑derived interval between the initiation of the right‑engine failure and the final closure of the spar (fuel‑cutoff) valve for Flight 383."
+Q1,md_recursive,hyde,"['DCA24MA063', 'NTSB/AAR-00/03', 'NTSB/AAR-06/03', 'NTSB/AAR-09/03', 'NTSB/AAR-16/02', 'NTSB/AAR-18/01', 'NTSB/AAR-19/03']","**Evidence:**
+- The provided excerpts from NTSB/AAR‑18/01 indicate that the right‑engine failure occurred 26.4 seconds before the aircraft came to a stop at 1432:09.8 UTC【AAR1801‑2】.  
+- They also note that the left engine was shut down about 59 seconds after the aircraft stopped, and that the left engine spooled down about 10 seconds later【AAR1801‑1】.  
+
+**Answer:**
+Insufficient context. The excerpts do not contain any information about when the spar (fuel) valve was finally closed after the right‑engine failure, so the exact elapsed time cannot be determined from the provided material."
+Q1,section,hyde,"['NTSB/AAR-04/03', 'NTSB/AAR-06/03', 'NTSB/AAR-07/01', 'NTSB/AAR-10/03', 'NTSB/AAR-18/01', 'NTSB/AAR-19/03']","**Evidence**
+
+- The excerpts from NTSB/AAR‑18/01 describe the right‑engine failure, the “bang” sound, the rejected‑takeoff maneuver, and the subsequent engine‑fire checklist actions (fuel switch shut‑off, fire handle pull, fire‑extinguisher discharge) [​NTSB: AAR1801].
+- They also note that the left engine was shut down about 59 seconds after the aircraft stopped, and that the left‑engine fuel control switches were not closed until after depressurization [​NTSB: AAR1801].
+- No passage in the provided material mentions a “spar valve” or gives a timestamp for when any spar‑type fuel‑cutoff valve was closed after the right‑engine failure.
+
+**Answer**
+
+Insufficient context – the supplied excerpts from NTSB Aviation Accident Report AAR‑18/01 do not contain information on a “spar valve” or its closure timing, so the elapsed seconds between the right‑engine failure onset and the final closure of that valve cannot be determined from the given material."
+Q2,md_recursive,baseline,"['DCA24MA063', 'NTSB/AAR-01/02', 'NTSB/AAR-14/01']","**Evidence**
+- The report states that “the R4 and L4 jumpseats were ejected from the airplane and found still attached to large pieces of galley structure about 1,100 and 1,300 ft … down the runway from the airplane” and that the flight attendants in those seats sustained severe injuries indicative of ejection during the slide【NTSB: AAR-14/01】.  
+
+**Answer**
+- The two aft‑cabin flight attendants who were ejected onto the runway and survived were seated in **jumpseat R4** and **jumpseat L4**."
+Q1,md_recursive,multi_query,"['NTSB/AAR-07/05', 'NTSB/AAR-12/02', 'NTSB/AAR-18/01']","**Evidence**
+- The excerpts from NTSB/AAR‑18/01 describe the uncontained right‑engine failure, the abort, and subsequent shutdown of the left engine, but they contain no telemetry or timing information about when the spar (fuel) valve was closed to cut off fuel to the failed engine. [NTSB: AAR‑18/01]
+
+**Answer**
+Insufficient context – the provided sections of the AAR‑18/01 report do not include the FDR timing for the spar‑valve closure, so the elapsed seconds cannot be determined from the available information."
+Q1,section,multi_query,"['NTSB/AAR-09/03', 'NTSB/AAR-10/03', 'NTSB/AAR-18/01']","**Evidence**
+
+- The report states that the right‑engine “bang” (the start of the uncontained failure) was recorded at ≈ 1432:00 and that the captain called for the engine‑fire checklist 20.6 seconds later (at 1432:04.1) [NTSB: AAR-18/01].
+- The fuel‑switch for the right engine was shut off as part of that engine‑fire checklist, but the transcript does not give a specific timestamp for when the switch (or “spar valve”) was actually moved to the closed position [NTSB: AAR-18/01].
+- No other excerpt provides a precise FDR‑derived time for the final closure of the right‑engine fuel shutoff valve.
+
+**Answer**
+
+Insufficient context – the provided excerpts do not contain a specific FDR timestamp for when the right‑engine fuel (spar) valve was finally closed, so the exact elapsed seconds cannot be determined from the available information."
+Q1,md_recursive,mq+hyde,"['NTSB/AAR-12/02', 'NTSB/AAR-18/01', 'NTSB/AAR-19/03']","**Evidence**
+
+- The provided excerpts from NTSB/AAR‑18/01 describe the timing of the right‑engine failure, the aircraft’s stop on the runway (26.4 s after the failure), and the subsequent shutdown of the left engine (≈59 s after the stop) [NTSB: AAR1801].
+- No excerpt from the AAR‑18/01 report mentions the activation or closure of a “spar valve” (fuel‑cutoff valve) or provides a timestamp for that event.
+
+**Answer**
+
+Insufficient context – the excerpts from NTSB/AAR‑18/01 do not contain information on when the spar (fuel‑cutoff) valve was closed, so the elapsed time between the start of the right‑engine failure and the final closure of that valve cannot be determined from the provided material."
+Q2,section,baseline,"['NTSB/AAR-01/02', 'NTSB/AAR-14/01', 'NTSB/AAR-19/03']","**Evidence**
+- The report notes that “Jumpseat M4B was ejected from the airplane… Jumpseat M4A remained in the airplane” and that “both flight attendants were ejected during the airplane’s slide”【NTSB: AAR-14/01】.  
+- It further states that “Flight attendants M4A and M4B were found on the runway more than 1,000 ft from their jumpseats and sustained injuries… indicating both were ejected during the airplane’s slide”【NTSB: AAR-14/01】.  
+
+**Answer**
+The two aft‑cabin flight attendants who were ejected onto the runway were seated in jumpseat **M4A** and jumpseat **M4B**."
+Q1,section,mq+hyde,"['NTSB/AAR-09/03', 'NTSB/AAR-10/03', 'NTSB/AAR-18/01']","**Evidence**
+- The right‑engine failure (“bang”) was recorded on the CVR, and the captain initiated the engine‑fire checklist **20.6 seconds** after that sound (the checklist start time was 1432:04.1)【AAR1801 | Chunk 1】.  
+- The fuel‑switch for the right engine was shut off **as part of the engine‑fire checklist**, but the report does not give a specific timestamp for when the switch (or “spar valve”) was actually closed【AAR1801 | Chunk 1】.  
+- No other passage in the provided excerpts supplies a precise elapsed‑time figure between the failure onset and the final closure of the fuel‑cutoff valve.
+
+**Answer**
+Insufficient context – the report excerpts do not state the exact number of seconds between the start of the right‑engine failure and the moment the fuel‑cutoff (spar) valve was finally closed."
+Q2,md_recursive,hyde,"['NTSB/AAR-01/02', 'NTSB/AAR-06/04', 'NTSB/AAR-14/01', 'NTSB/AAR-92/06']","**Evidence**
+- The report states that “Flight attendants **M4A** and **M4B** were found on the runway… indicating both were ejected during the airplane's slide”【NTSB: AAR-14/01】.  
+- Further detail notes that “Jumpseat **M4B**'s restraint was found still buckled… Jumpseat **M4A**'s four‑point restraint was unbuckled but had a fractured lap belt shackle”【NTSB: AAR-14/01】.  
+
+**Answer**
+The two aft‑cabin flight attendants who were ejected and survived were seated in jumpseats **M4A** and **M4B**."
+Q2,section,hyde,"['DCA20MA002', 'NTSB/AAR-01/02', 'NTSB/AAR-14/01', 'NTSB/AAR-19/03']","**Evidence**
+- The report notes that “Jumpseat M4B was ejected from the airplane… Jumpseat M4A remained in the airplane” and that “Jumpseat M4A’s four‑point restraint was unbuckled but had a fractured lap‑belt shackle”【NTSB: AAR-14/01】.
+- It further states that “Flight attendants M4A and M4B were found on the runway … indicating both were ejected during the airplane’s slide”【NTSB: AAR-14/01】.
+
+**Answer**
+The two aft‑cabin flight attendants who were ejected onto the runway were seated in jumpseats **M4A** and **M4B**."
+Q3,md_recursive,baseline,"['NTSB/AAR-09/03', 'NTSB/AAR-10/02', 'NTSB/AAR-14/01', 'NTSB/AAR-19/03']","- Evidence:
+  - The on‑vehicle video of the emergency response notes that the individual’s (the passenger’s) path “was partially hidden … by the smoke plume” as ARFF personnel moved on the runway【NTSB: AAR-14/01】.  
+
+- Answer:
+  - According to the NTSB investigation of Asiana Airlines Flight 214 (AAR‑14/01), the passenger who was struck by two ARFF vehicles was visually obscured from the drivers by the **smoke plume** generated by the post‑crash fire."
+Q2,md_recursive,multi_query,"['DCA24MA063', 'NTSB/AAR-01/02', 'NTSB/AAR-14/01', 'NTSB/AAR-19/03']","**Evidence**
+- The report states that “Flight attendants **M4A** and **M4B** were found on the runway … and … both were ejected during the airplane’s slide”【NTSB: AAR-14/01】.  
+- It also notes that “there were two aft‑facing jumpseats in the aft galley … designated as **M4A** and **M4B**”【NTSB: AAR-14/01】.  
+
+**Answer**
+- The two aft‑cabin flight attendants who were ejected onto the runway and survived were seated in jumpseats **M4A** and **M4B**."
+Q2,section,multi_query,"['NTSB/AAR-14/01', 'NTSB/AAR-19/03', 'NTSB/AAR-92/06']","**Evidence**
+- The investigation report states that “The R4 and L4 jumpseats were ejected from the airplane… Flight attendants R4 and L4 sustained major skin avulsion injuries… these injuries are indicative that these flight attendants were also ejected during the airplane's slide.” [NTSB: AAR1401]
+
+**Answer**
+The two flight attendants who were ejected onto the runway were seated in jumpseat **R4** and jumpseat **L4**."
+Q2,md_recursive,mq+hyde,"['NTSB/AAR-01/02', 'NTSB/AAR-14/01', 'NTSB/AAR-19/03']","**Evidence**
+- The report states that “Flight attendants **M4A** and **M4B** were found on the runway … and … were ejected during the airplane's slide”【NTSB: AAR-14/01】.
+- It further notes that “Given their final locations, it is likely that both flight attendants were pulled from their jumpseats … and were then completely unprotected from ground impact and abrasive injuries”【NTSB: AAR-14/01】.
+
+**Answer**
+The two aft‑cabin flight attendants who were ejected onto the runway and survived were seated in jumpseats **M4A** and **M4B**."
+Q3,section,baseline,"['DCA20MA002', 'NTSB/AAR-14/01', 'NTSB/AAR-19/03']","- Evidence:
+    - The NTSB report notes that the passenger’s location was identified, but “firefighters were in her immediate vicinity before she had been **covered by foam** or rolled over by a vehicle”【NTSB: AAR-14/01】.
+
+- Answer:
+    - The substance that visually obscured the passenger from the ARFF drivers was the **fire‑fighting foam** deployed by the ARFF vehicles."
+Q3,md_recursive,hyde,"['NTSB/AAR-00/03', 'NTSB/AAR-01/02', 'NTSB/AAR-07/07', 'NTSB/AAR-09/04', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02', 'NTSB/AAR-14/01']","**Evidence**
+
+- The excerpts provided for NTSB/AAR‑14/01 (Asiana Airlines Flight 214) include details on the crash sequence, passenger injuries, and ARFF vehicle actions, but none mention a substance that obscured the view of ARFF drivers or that a passenger was struck by two ARFF vehicles [​NTSB: AAR1401].  
+- Visibility‑related observations (e.g., darkness and fog) appear only in the AAR‑11/02 report concerning a Cessna 208 accident [​NTSB: AAR1102], not in the Asiana report.
+
+**Answer**
+
+Insufficient context – the provided excerpts from NTSB Aircraft Accident Report AAR‑14/01 do not contain information about a substance that visually obscured the passenger from the ARFF drivers."
+Q2,section,mq+hyde,"['NTSB/AAR-14/01', 'NTSB/AAR-19/03', 'NTSB/AAR-92/06']","- Evidence:
+    - The report states that “The **R4** and **L4** jumpseats were ejected from the airplane… Flight attendants **R4** and **L4** sustained major skin‑avulsion injuries” and that these jumpseats were found still attached to galley structure down the runway 【NTSB: AAR-14/01】.  
+
+- Answer:
+    - The two aft‑cabin flight attendants who were ejected onto the runway and survived were seated in jumpseats **R4** and **L4**."
+Q3,section,hyde,"['DCA20MA002', 'NTSB/AAR-07/07', 'NTSB/AAR-09/03', 'NTSB/AAR-09/04', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02', 'NTSB/AAR-14/01', 'NTSB/AAR-15/03']","**Evidence**
+- The excerpts from NTSB/AAR‑14/01 (Asiana Airlines Flight 214) provided above describe the approach, impact, and the overall emergency‑response timeline, including the arrival times of ARFF vehicles and the evacuation of passengers from doors 1L and 2L. However, none of the quoted sections mention a passenger located outside the aircraft who was struck by two ARFF vehicles, nor do they identify any substance that obscured that passenger from the drivers’ view. [​NTSB: AAR‑14/01]  
+
+**Answer**
+Insufficient context – the supplied excerpts from NTSB Aircraft Accident Report AAR‑14/01 do not contain information about a passenger outside the aircraft being struck by ARFF vehicles or the substance that obscured the passenger from the drivers’ view."
+Q3,md_recursive,multi_query,"['NTSB/AAR-07/05', 'NTSB/AAR-14/01', 'NTSB/AAR-16/02', 'NTSB/AAR-19/03']","**Evidence**
+- The excerpts from NTSB/AAR‑14/01 describe passenger 41E’s location and the actions of firefighters (e.g., camera footage showing a firefighter directing Rescue 10 around the victim, and a third firefighter seeing the victim while repositioning a vehicle) [​NTSB: AAR1401]​.
+- None of the provided AAR‑14/01 text mentions a specific substance (e.g., smoke, foam, water, etc.) that obscured the passenger from the ARFF drivers’ view.
+
+**Answer**
+Insufficient context – the supplied excerpts from NTSB Aircraft Accident Report AAR‑14/01 do not specify what substance visually obscured the passenger from the ARFF drivers’ view."
+Q3,section,multi_query,"['DCA20MA002', 'NTSB/AAR-09/03', 'NTSB/AAR-14/01']","- **Evidence**
+  - The NTSB report notes that the passenger’s location was identified and firefighters were in her immediate vicinity “before she had been covered by **foam** or rolled over by a vehicle.” [NTSB: AAR-14/01]
+
+- **Answer**
+  - According to the NTSB investigation of Asiana Airlines Flight 214 (AAR‑14/01), the passenger was visually obscured from the ARFF drivers by **fire‑fighting foam** that had been applied to the aircraft."
+Q4,md_recursive,baseline,"['DCA23LA125', 'NTSB/AAR-10/06', 'NTSB/AAR-14/01']","**Evidence**
+- The report states the instructor pilot had “more than 12,000 hours, including more than 3,200 hours in the Boeing 777” [NTSB: AAR1401].
+- It also notes that the Pilot Monitoring (PM) was “an experienced 777 captain who was on his first flight as an instructor pilot supervising a trainee captain” [NTSB: AAR1401].
+- No passage in the provided excerpts quantifies how many of the PM’s 777 hours were specifically logged as an Instructor Pilot.
+
+**Answer**
+Insufficient context – the excerpts from NTSB Aircraft Accident Report AAR‑14/01 do not specify the exact number of Boeing 777 flight hours the PM had as an Instructor Pilot prior to the accident."
+Q3,md_recursive,mq+hyde,"['NTSB/AAR-08/01', 'NTSB/AAR-14/01', 'NTSB/AAR-16/02', 'NTSB/AAR-19/03']","**Evidence**
+- The excerpts from NTSB/AAR‑14/01 describe passenger 41E’s location on the ground, the ARFF firefighters’ movements around her, and that a firefighter “thought the person was dead” and proceeded cautiously [Report AAR‑14/01].
+- None of the provided text mentions a specific substance (e.g., smoke, fog, snow, debris, etc.) that obscured the passenger from the ARFF drivers’ view.
+
+**Answer**
+Insufficient context – the supplied excerpts from NTSB Aircraft Accident Report AAR‑14/01 do not specify any particular substance that visually obscured the fatally injured passenger from the ARFF drivers."
+Q4,section,baseline,"['DCA24MA063', 'NTSB/AAR-14/01', 'NTSB/AAR-19/01']","- Evidence:
+  - The report states that the pilot monitoring (PM) “was an experienced 777 captain who was on his first flight as an instructor pilot supervising a trainee captain gaining operating experience”【NTSB: AAR-14/01】.  
+  - No other portion of the report provides any prior instructor‑pilot flight‑time for the PM; his total 777 time (3,208 h) and PIC time are listed, but instructor‑pilot hours are not mentioned, implying none existed before this flight【NTSB: AAR-14/01】.  
+
+- Answer:
+  - The PM had **0 flight hours** as an Instructor Pilot in the Boeing 777 prior to the Asiana Airlines Flight 214 accident."
+Q4,md_recursive,hyde,"['NTSB/AAR-07/06', 'NTSB/AAR-14/01', 'NTSB/AAR-15/02', 'NTSB/AAR-19/04']","- Evidence:
+  - The report notes that the instructor pilot “had more than 12,000 hours, including more than 3,200 hours in the Boeing 777, **the accident flight was his first flight as an instructor pilot**” [NTSB: AAR-14/01].
+  - It also states the PM “was an experienced 777 captain **who was on his first flight as an instructor pilot** supervising a trainee captain” [NTSB: AAR-14/01].
+
+- Answer:
+  - The PM had **0 flight hours** as an Instructor Pilot in the Boeing 777 prior to the Asiana Airlines Flight 214 accident."
+Q4,section,hyde,"['NTSB/AAR-14/01', 'NTSB/AAR-20/01', 'NTSB/AAR-21/02']","**Evidence**
+- The report states that the accident flight “was his first time acting as an IP” (Instructor Pilot) — the PM had never previously served in that role. [NTSB: AAR-14/01]  
+- The executive summary notes: “The PM was an experienced 777 captain who was on his first flight as an instructor pilot supervising a trainee captain…” [NTSB: AAR-14/01]  
+
+**Answer**
+The Pilot Monitoring (PM) had **0 flight hours** of experience acting as an Instructor Pilot in the Boeing 777 prior to the Asiana Airlines Flight 214 accident."
+Q3,section,mq+hyde,"['DCA20MA002', 'NTSB/AAR-09/03', 'NTSB/AAR-14/01']","**Evidence:**
+- The provided excerpts from NTSB/AAR‑14/01 discuss the overall crash, passenger injuries, and ARFF response, but none mention a specific substance that obscured the view of the ARFF drivers of the passenger who was struck.  
+
+**Answer:**
+- Insufficient context. The excerpts do not contain information about the substance that visually obscured the passenger from the ARFF drivers."
+Q5,md_recursive,baseline,"['DCA23LA125', 'NTSB/AAR-02/01', 'NTSB/AAR-14/01']","**Evidence:**
+- The pilot flying (PF) had accumulated **33 hours of Boeing 777 flight time** prior to the accident flight【NTSB: AAR-14/01】.
+
+**Answer:**
+- The PF had **33 total flight hours** in the Boeing 777 before the accident."
+Q4,md_recursive,multi_query,"['DCA23LA125', 'NTSB/AAR-14/01', 'NTSB/AAR-19/04']","- Evidence:
+  - The report states that the instructor pilot “had more than 12,000 hours, including more than 3,200 hours in the Boeing 777, **the accident flight was his first flight as an instructor pilot**”【NTSB: AAR-14/01】.  
+  - Because it was his first flight in that role, the PM had **zero** prior flight‑hours as an Instructor Pilot in the Boeing 777 before this accident【NTSB: AAR-14/01】.  
+
+- Answer:
+  - The PM had **0 flight hours** of experience as an Instructor Pilot in the Boeing 777 prior to the Asiana Airlines Flight 214 accident."
+Q4,section,multi_query,"['NTSB/AAR-03/01', 'NTSB/AAR-14/01', 'NTSB/AAR-20/01']","**Evidence:**
+- The PM’s total flight experience and 777 time are detailed (12,307 total hours, 9,045 PIC hours, 3,208 hours in the 777) but the report excerpts do not provide a separate count of hours served specifically as an **Instructor Pilot** in the Boeing 777【AAR1401】.  
+- The narrative notes that the PM was on his **first flight as an instructor pilot** supervising a trainee captain, indicating he had no prior instructor‑pilot experience in the 777 before this accident【AAR1401】. However, the excerpt does not explicitly state “0 hours” as an instructor‑pilot; it only describes the circumstance.
+
+**Answer:**
+Insufficient context – the provided excerpts from NTSB/AAR‑14/01 do not contain a specific figure for the PM’s prior Boeing 777 instructor‑pilot flight‑hour experience."
+Q4,md_recursive,mq+hyde,"['NTSB/AAR-07/06', 'NTSB/AAR-14/01', 'NTSB/AAR-19/04']","- Evidence:
+  - The report states that the pilot monitoring (PM) “was an experienced 777 captain who was on his first flight as an instructor pilot supervising a trainee captain” [ NTSB: AAR-14/01 ].
+  - No other passage in the AAR‑14/01 report provides a numeric value for prior instructor‑pilot flight time for the PM; the statement above implies he had **zero** hours as an instructor pilot in the Boeing 777 before this flight.
+
+- Answer:
+  - The PM had **0 flight hours** of experience acting as an Instructor Pilot in the Boeing 777 prior to the accident flight."
+Q5,section,baseline,"['DCA23LA125', 'NTSB/AAR-09/03', 'NTSB/AAR-14/01']","- Evidence:
+  - The pilot‑flying (PF) “had … 33 hours of 777 flight time and 24 hours of 777 simulator time” prior to the accident [ NTSB: AAR1401 ].
+
+- Answer:
+  - The PF had **33 total flight hours** in the Boeing 777 before the accident flight."
+Q5,md_recursive,hyde,"['DCA22MA193', 'DCA23LA125', 'NTSB/AAR-04/04', 'NTSB/AAR-07/01', 'NTSB/AAR-10/01', 'NTSB/AAR-12/02', 'NTSB/AAR-14/01', 'NTSB/AAR-16/03', 'NTSB/AAR-20/02']","- **Evidence:**
+  - The report states that the pilot flying “had … 33 hours of 777 flight time” prior to the accident flight【NTSB: AAR-14/01】.  
+
+- **Answer:**
+  - The PF had **33 total flight hours** in the Boeing 777 before the accident flight."
+Q4,section,mq+hyde,"['NTSB/AAR-03/01', 'NTSB/AAR-14/01', 'NTSB/AAR-20/01']","- Evidence:
+  - The report provides the PM’s total flight experience (12,307 total hours, 3,208 hours as PIC, 3,208 hours in the 777) and notes that the accident flight was his first time acting as an instructor pilot supervising a trainee captain [​NTSB: AAR-14/01].
+  - No excerpt in the supplied AAR‑14/01 material specifies a separate count of “instructor‑pilot” hours in the Boeing 777.
+
+- Answer:
+  - Insufficient context. The provided sections of NTSB/AAR‑14/01 do not state how many Boeing 777 flight hours the PM had specifically as an instructor pilot before the accident."
+Q5,md_recursive,multi_query,"['DCA23LA125', 'NTSB/AAR-07/01', 'NTSB/AAR-14/01']","- Evidence:
+  - The PF had accumulated **33 hours of Boeing 777 flight time** prior to the accident flight【NTSB: AAR1401】.  
+
+- Answer:
+  - According to NTSB Aircraft Accident Report AAR‑14/01, the pilot flying logged **33 total flight hours in the Boeing 777** before the Asiana Airlines Flight 214 accident."
+Q5,section,hyde,"['DCA23LA125', 'NTSB/AAR-07/04', 'NTSB/AAR-14/01', 'NTSB/AAR-20/02']","**Evidence**
+- The pilot‑flying (PF) had accumulated **33 hours of Boeing 777 flight time** before the accident flight【NTSB: AAR-14/01】.
+
+**Answer**
+- The PF had **33 total flight hours** in the Boeing 777 prior to the accident."
+Q6,md_recursive,baseline,"['NTSB/AAR-00/03', 'NTSB/AAR-07/03', 'NTSB/AAR-07/04']","**Evidence**
+- The **yellow zone** was described as “the smallest of the three zones and was contained within the red zone on its northeastern side” [NTSB: AAR-00/03].
+- It “contained pieces of the airplane’s forward fuselage, from about **STA 840 to the nose of the airplane (STA 90)**” [NTSB: AAR-00/03].
+
+**Answer**
+- The smallest debris field was the **yellow zone**.  
+- It lay within the red zone on the northeastern side and held wreckage spanning **fuselage stations 840 to 90**."
+Q5,section,multi_query,"['DCA23LA125', 'NTSB/AAR-09/03', 'NTSB/AAR-14/01']","- Evidence:
+  - The pilot‑flying (PF) “had 33 hours of 777 flight time and 24 hours of 777 simulator time” prior to the accident [NTSB: AAR-14/01].
+
+- Answer:
+  - The PF had **33 total flight hours** in the Boeing 777 before the accident flight."
+Q5,md_recursive,mq+hyde,"['DCA22MA193', 'DCA23LA125', 'NTSB/AAR-14/01']","- **Evidence:**
+  - The PF’s record showed “he had **33 hours of 777 flight time**” prior to the accident [ NTSB: AAR-14/01 ].
+
+- **Answer:**
+  - The pilot flying had **33 total flight hours in the Boeing 777** before the accident flight."
+Q6,section,baseline,"['NTSB/AAR-00/03', 'NTSB/AAR-07/03', 'NTSB/AAR-11/05']","- **Evidence:**
+  - The yellow zone “was the smallest of the three zones and was contained within the red zone on its northeastern side.” [NTSB: AAR0003]
+  - The yellow zone “contained pieces of the airplane’s forward fuselage, from about STA 840 to the nose of the airplane (STA 90).” [NTSB: AAR0003]
+
+- **Answer:**
+  The smallest debris field was the **Yellow zone**, which lay within the red zone on its northeastern side. It held wreckage from fuselage station **840** forward to the nose at station **90**."
+Q5,section,mq+hyde,"['DCA23LA125', 'NTSB/AAR-14/01', 'NTSB/AAR-20/02']","- **Evidence:**
+  - The pilot flying (PF) “had accumulated … 33 hours of 777 flight time and 24 hours of 777 simulator time” prior to the accident [ NTSB: AAR-14/01 ].
+
+- **Answer:**
+  - According to the AAR‑14/01 report, the PF had **33 total flight hours** in the Boeing 777 before the accident flight."
+Q6,md_recursive,hyde,"['NTSB/AAR-00/03', 'NTSB/AAR-07/03', 'NTSB/AAR-14/02']","**Evidence**
+- The yellow zone “was the smallest of the three zones and was contained within the red zone on its northeastern side.” [NTSB: AAR-00/03]  
+- The yellow zone “contained pieces of the airplane’s forward fuselage, from about STA 840 to the nose of the airplane (STA 90).” [NTSB: AAR-00/03]
+
+**Answer**
+The **yellow zone** was the smallest debris field, located within the red zone on its northeastern side, and it held wreckage ranging from **fuselage station 840** to the aircraft nose at **station 90**."
+Q7,md_recursive,baseline,"['DCA23LA125', 'NTSB/AAR-00/01', 'NTSB/AAR-01/01', 'NTSB/AAR-09/07', 'NTSB/AAR-12/02', 'NTSB/AAR-15/01']","**Evidence:**
+- The report notes that the pilot “had accrued a total flight time of 9,902 hours … of which 1,732 was in the B‑737‑200. His pilot‑in‑command time in the B‑737‑200 was **891 hours and 31 minutes**.” [NTSB: AAR0101]
+
+**Answer:**
+- The captain (as documented) had **891 hours 31 minutes** of PIC experience in the Boeing 737‑200 prior to the accident flight."
+Q6,section,hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-00/03', 'NTSB/AAR-11/05']","- **Evidence**
+  - The **yellow zone** was described as “the smallest of the three zones and was contained within the red zone on its northeastern side”【NTSB: AAR0003】.  
+  - It “contained pieces of the airplane’s forward fuselage, from about **STA 840** to the nose of the airplane (**STA 90**)”【NTSB: AAR0003】.  
+
+- **Answer**
+  - The smallest debris field was the **yellow zone**. It lay within the red zone on the northeastern side and held wreckage spanning fuselage stations **840 through 90** (from the forward fuselage to the nose)."
+Q6,md_recursive,multi_query,"['NTSB/AAR-00/03', 'NTSB/AAR-04/04', 'NTSB/AAR-21/04']","**Evidence**
+- The **yellow zone** was identified as “the smallest of the three zones” and “was contained within the red zone on its northeastern side”【NTSB: AAR0003】.  
+- Wreckage recovered from the yellow zone “contained pieces of the airplane’s forward fuselage, from about **STA 840 to the nose of the airplane (STA 90)**”【NTSB: AAR0003】.  
+
+**Answer**
+The smallest debris field was the **yellow zone**; it lay within the red zone on the red zone’s northeastern side. The wreckage recovered from this field spanned fuselage stations **840 – 90**."
+Q6,section,multi_query,"['NTSB/AAR-00/03', 'NTSB/AAR-07/03', 'NTSB/AAR-11/05']","- Evidence:
+    - The yellow zone was described as “the smallest of the three zones and was contained within the red zone on its northeastern side.” [NTSB: AAR0003]
+    - It “contained pieces of the airplane’s forward fuselage, from about STA 840 to the nose of the airplane (STA 90).” [NTSB: AAR0003]
+
+- Answer:
+    - The smallest debris field was the **yellow zone**. It lay within the red zone on the northeastern side and held wreckage spanning fuselage stations **STA 840 to STA 90** (the forward fuselage through to the nose)."
+Q7,section,baseline,"['DCA20MA002', 'DCA23LA125', 'NTSB/AAR-00/01', 'NTSB/AAR-01/01', 'NTSB/AAR-11/02', 'NTSB/AAR-15/01']","- Evidence:
+    - The report states the captain “accrued a total flight time of 9,902 hours, of which 1,732 hours were in the B‑737‑200 that included **891 hours as captain**.” [NTSB: AAR0101]
+
+- Answer:
+    - The captain had **891 hours 0 minutes of pilot‑in‑command (PIC) experience** in the Boeing 737‑200 prior to the accident flight."
+Q6,md_recursive,mq+hyde,"['NTSB/AAR-00/03', 'NTSB/AAR-04/04', 'NTSB/AAR-21/04']","**Evidence**
+- The **yellow zone** was identified as “the smallest of the three zones and was contained within the red zone on its northeastern side.” [NTSB: AAR0003]  
+- The wreckage recovered from the yellow zone “included pieces of the airplane’s forward fuselage, from about **STA 840** to the nose of the airplane (**STA 90**) … nearly all of fuselage section 41 (the nose section) and the forward portions of fuselage section 42.” [NTSB: AAR0003]
+
+**Answer**
+The smallest debris field was the **Yellow zone**; it lay within the red zone on its northeastern side and contained wreckage from fuselage stations **840 to 90**."
+Q7,md_recursive,hyde,"['NTSB/AAR-01/01', 'NTSB/AAR-04/04', 'NTSB/AAR-05/02', 'NTSB/AAR-07/01', 'NTSB/AAR-15/01', 'NTSB/AAR-16/03', 'NTSB/AAR-19/04', 'NTSB/AAR-20/02', 'NTSB/AAR-21/02']","- Evidence:
+    - The report states that the captain “had accrued a total flight time of 9,902 hours, of which 1,732 hours were in the B‑737‑200 that included **891 hours as captain**”【NTSB: AAR-01/01】.  
+
+- Answer:
+    - The captain had **891 hours 0 minutes** of pilot‑in‑command (PIC) experience in the Boeing 737‑200 prior to the accident."
+Q6,section,mq+hyde,"['NTSB/AAR-00/03', 'NTSB/AAR-07/03', 'NTSB/AAR-11/05']","- **Evidence**
+  - The report states: “The yellow zone was the smallest of the three zones and was contained within the red zone on its northeastern side… This zone contained wreckage from the forward portion of the fuselage, from STA 90 (the nose of the airplane) to STA 840…” [NTSB: AAR0003]  
+  - Additional detail in the yellow‑zone description notes that the wreckage included “nearly all of fuselage section 41 (the nose section) and the forward portions of fuselage section 42,” which correspond to stations 90 – 840. [NTSB: AAR0003]
+
+- **Answer**
+  - The **yellow zone** was the smallest debris field, located within the red zone on its northeastern side.  
+  - It contained wreckage from fuselage stations **STA 90 to STA 840**."
+Q7,md_recursive,multi_query,"['NTSB/AAR-00/01', 'NTSB/AAR-01/01', 'NTSB/AAR-15/01']","**Evidence:**
+- The provided excerpts for NTSB/AAR‑01/01 (United Airlines Flight 585) contain only the accident summary, cause, and a note about simulation studies; they do **not** include any biographical or flight‑time data for the captain, such as total United hours, PIC hours, or Boeing 737‑200 experience. [NTSB: AAR-01/01]
+
+**Answer:**
+Insufficient context – the supplied material does not contain the captain’s Boeing 737‑200 PIC flight‑time details required to answer the question."
+Q7,section,hyde,"['NTSB/AAR-01/01', 'NTSB/AAR-09/03', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-15/01', 'NTSB/AAR-19/01', 'NTSB/AAR-20/02', 'NTSB/AAR-21/02']","- Evidence:
+  - The report states the captain “had accrued a total flight time of 9,902 hours while employed with UAL, of which 1,732 was in the B‑737‑200. His pilot‑in‑command time in the B‑737‑200 was 891 hours”【NTSB: AAR0101】.  
+
+- Answer:
+  - The captain had **891 hours 0 minutes of PIC experience** in the Boeing 737‑200 prior to the accident flight."
+Q8,md_recursive,baseline,"['NTSB/AAR-01/02', 'NTSB/AAR-06/04', 'NTSB/AAR-07/05']","- Evidence:
+  - The tire marks from the right main landing gear “continued until the edge of the gravel downslope located 459 feet beyond the end of the runway. The tire marks were approximately **82 feet to the left of the centerline** at the end of the runway surface.” [NTSB: AAR-01/02]
+
+- Answer:
+  - According to NTSB Accident Report AAR‑01/02 for American Airlines Flight 1420, the main landing‑gear tire marks were located **82 feet left of the runway 4R centerline** at the runway’s end."
+Q7,section,multi_query,"['NTSB/AAR-00/01', 'NTSB/AAR-01/01', 'NTSB/AAR-15/01']","**Evidence**
+- The captain’s total flight time was 9,902 hours, of which 1,732 hours were in the Boeing 737‑200, **including 891 hours as pilot‑in‑command (PIC)** on that aircraft. [NTSB: AAR0101]
+
+**Answer**
+- The captain had **891 hours 0 minutes of PIC experience** in the Boeing 737‑200 prior to the accident flight."
+Q7,md_recursive,mq+hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-01/01', 'NTSB/AAR-12/02', 'NTSB/AAR-15/01', 'NTSB/AAR-19/04']","- Evidence:
+  - The captain’s total flight time was 9,902 hours, of which 1,732 hours were in the Boeing 737‑200, **including 891 hours as captain (pilot‑in‑command)**【NTSB: AAR-01/01】.  
+
+- Answer:
+  - The captain had **891 hours 0 minutes of PIC experience** in the Boeing 737‑200 prior to the accident flight."
+Q8,md_recursive,hyde,"['NTSB/AAR-01/02', 'NTSB/AAR-05/02', 'NTSB/AAR-06/04', 'NTSB/AAR-07/05', 'NTSB/AAR-11/01']","- Evidence:
+  - The tire marks from the right main landing gear “were approximately **82 feet to the left of the centerline at the end of the runway surface**”【NTSB: AAR0102】.  
+
+- Answer:
+  - According to NTSB Accident Report AAR‑01/02 for American Airlines Flight 1420, the main landing‑gear tire marks were located **82 feet left of the runway 4R centerline** at the runway’s end."
+Q8,section,baseline,"['NTSB/AAR-01/02', 'NTSB/AAR-06/04', 'NTSB/AAR-07/05']","- Evidence:
+  - The accident report notes that “the tire marks were approximately **98 feet to the left of the centerline at the end of the runway surface**” for the left‑main landing‑gear track 【NTSB: AAR-01/02】.  
+
+- Answer:
+  - According to NTSB Aircraft Accident Report AAR‑01/02, the main‑landing‑gear tire marks were located **98 feet left of the runway 4R centerline** at the runway’s end."
+Q7,section,mq+hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-01/01', 'NTSB/AAR-10/02', 'NTSB/AAR-15/01', 'NTSB/AAR-21/02']","- Evidence:
+    - The captain’s total flight time was 9,902 hours, of which **1,732 hours were in the B‑737‑200, including 891 hours as pilot‑in‑command**【NTSB: AAR0101】.
+
+- Answer:
+    - The captain had **891 hours 0 minutes of PIC experience in the Boeing 737‑200** prior to the accident flight."
+Q8,md_recursive,multi_query,"['NTSB/AAR-01/02', 'NTSB/AAR-06/04', 'NTSB/AAR-07/05']","- Evidence:
+  - The tire marks from the right main landing gear “were approximately **82 feet to the left of the centerline at the end of the runway surface**”【NTSB: AAR-01/02】.  
+
+- Answer:
+  - According to NTSB Aircraft Accident Report AAR‑01/02, the main landing‑gear tire marks were **82 feet left of the runway centerline** at the end of runway 4R."
+Q9,md_recursive,baseline,"['NTSB/AAR-00/01', 'NTSB/AAR-04/04', 'NTSB/AAR-07/01', 'NTSB/AAR-09/03']","**Evidence**
+- The report states that a **12‑inch fuel oil pipeline** was severed by the aircraft. [NTSB: AAR-00/01]  
+- It further notes that the severed line **spilled about 1,000 gallons of oil** in a localized area. [NTSB: AAR-00/01]
+
+**Answer**
+- Diameter of the severed pipeline: **12 inches**.  
+- Approximate oil spillage: **1,000 gallons**."
+Q8,section,hyde,"['NTSB/AAR-01/02', 'NTSB/AAR-05/01', 'NTSB/AAR-05/02', 'NTSB/AAR-06/04', 'NTSB/AAR-07/05', 'NTSB/AAR-10/02', 'NTSB/AAR-92/06']","**Evidence**
+
+- The accident report describes the left‑main‑gear tire marks as being “approximately **98 feet to the left of the centerline** at the end of the runway surface”【NTSB: AAR0102】.  
+- The same section states that the right‑main‑gear tire marks were “approximately **82 feet to the left of the centerline** at the end of the runway surface”【NTSB: AAR0102】.  
+
+**Answer**
+
+In the American Airlines Flight 1420 accident (NTSB/AAR‑01/02), the main‑landing‑gear tire marks at the far end of runway 4R were offset to the left of the runway centreline:
+
+- Left‑main‑gear marks: **98 feet left of centreline**.  
+- Right‑main‑gear marks: **82 feet left of centreline**.  
+
+These values are taken directly from the tire‑mark analysis in the report."
+Q8,section,multi_query,"['NTSB/AAR-01/02', 'NTSB/AAR-06/04', 'NTSB/AAR-07/05', 'NTSB/AAR-92/06']","**Evidence**
+- The report notes that “the tire marks were approximately **98 feet to the left of the centerline at the end of the runway surface**” for the **left main landing‑gear** tire marks【NTSB: AAR0102】.  
+- It also states that “the tire marks were approximately **82 feet to the left of the centerline at the end of the runway surface**” for the **right main landing‑gear** tire marks【NTSB: AAR0102】.  
+
+**Answer**
+- The left‑main‑gear tire marks were about **98 feet** left of the runway centerline at the runway‑end.  
+- The right‑main‑gear tire marks were about **82 feet** left of the runway centerline at the runway‑end."
+Q8,md_recursive,mq+hyde,"['NTSB/AAR-01/02', 'NTSB/AAR-06/04', 'NTSB/AAR-07/05', 'NTSB/AAR-92/06']","- Evidence:
+  - The tire marks from the right main landing gear continued to the end of the runway and were “approximately **82 feet to the left of the centerline** at the end of the runway surface”【NTSB: AAR0102】.  
+
+- Answer:
+  - At the end of runway 4R, the main landing‑gear tire marks were located **82 feet left of the runway centerline**."
+Q9,md_recursive,hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-06/03', 'NTSB/AAR-10/06', 'NTSB/AAR-13/02', 'NTSB/AAR-14/01', 'NTSB/AAR-15/03', 'NTSB/AAR-18/01']","**Evidence**
+- The report states that a **12‑inch fuel oil pipeline** was severed by the aircraft. [NTSB: AAR-00/01]  
+- It further notes that the severed pipeline **spilled about 1,000 gallons of oil** in a localized area. [NTSB: AAR-00/01]
+
+**Answer**
+- Diameter of the severed pipeline: **12 inches**.  
+- Approximate oil spillage: **1,000 gallons**."
+Q9,section,baseline,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02', 'NTSB/AAR-09/03', 'NTSB/AAR-11/05']","- Evidence:
+    - The report states that a **12‑inch fuel oil pipeline** was severed by the airplane and that the rupture **spilled about 1,000 gallons of oil** into the surrounding area【NTSB: AAR0001】.  
+
+- Answer:
+    - The severed fuel oil pipeline had a diameter of **12 inches**, and the spill released **approximately 1,000 gallons of oil**."
+Q9,md_recursive,multi_query,"['NTSB/AAR-00/01', 'NTSB/AAR-00/03', 'NTSB/AAR-04/04', 'NTSB/AAR-07/01']","**Evidence**
+- The accident report states that a **12‑inch** fuel oil pipeline was severed by the aircraft. [NTSB: AAR-00/01]  
+- The same section notes that the severed pipeline **spilled about 1,000 gallons of oil** in a localized area. [NTSB: AAR-00/01]
+
+**Answer**
+- Diameter of the severed pipeline: **12 inches**.  
+- Approximate oil spill: **1,000 gallons**."
+Q10,md_recursive,baseline,"['NTSB/AAR-00/02', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02', 'NTSB/AAR-16/02']","- Evidence:
+  - The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within **3 minutes** of the alarm”【NTSB: AAR-00/02】.  
+
+- Answer:
+  - According to the ARFF fire crew chief in the AAR‑00/02 report, **3 minutes** elapsed from the Condition One alarm until five ARFF vehicles were actively engaged in fire‑suppression at the accident site."
+Q9,section,hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-04/03', 'NTSB/AAR-15/03', 'NTSB/AAR-17/03', 'NTSB/AAR-18/01']","**Evidence**
+- The severed pipeline was a **12‑inch** fuel oil pipeline. [NTSB: AAR0001]  
+- The rupture released **approximately 1,000 gallons** of oil. [NTSB: AAR0001]  
+
+**Answer**
+In the Korean Air Flight 801 accident (NTSB/AAR‑00/01), a 12‑inch‑diameter fuel oil pipeline was cut, spilling roughly 1,000 gallons of oil."
+Q8,section,mq+hyde,"['NTSB/AAR-01/02', 'NTSB/AAR-05/01', 'NTSB/AAR-06/04', 'NTSB/AAR-07/05', 'NTSB/AAR-92/06']","**Evidence**
+- The left‑main‑gear tire marks were reported to be **≈ 98 ft left of the runway centerline** at the runway‑end point【NTSB: AAR0102】.  
+- The right‑main‑gear tire marks were reported to be **≈ 82 ft left of the runway centerline** at the runway‑end point【NTSB: AAR0102】.  
+- A separate description in the same report states that “the tire marks … were **approximately 67 ft left of the centerline** at the end of the runway surface”【NTSB: AAR0102】.
+
+**Answer**
+The AAR‑01/02 report gives more than one figure for the lateral position of the main‑gear tire marks at the runway‑end:
+
+- Left main‑gear: about **98 ft** left of centerline.  
+- Right main‑gear: about **82 ft** left of centerline.  
+
+However, another passage in the same report summarizes the main‑gear marks as being **approximately 67 ft** left of centerline. Because the report contains these differing measurements, the exact distance depends on which gear or which summary is being referenced. Please specify whether you need the distance for the left main gear, the right main gear, or the overall summary value."
+Q9,section,multi_query,"['NTSB/AAR-00/01', 'NTSB/AAR-09/03']","**Evidence**
+- The accident severed a **12‑inch** fuel oil pipeline, which spilled **approximately 1,000 gallons** of oil. [NTSB: AAR0001]
+
+**Answer**
+- The fuel oil pipeline that was cut during the Korean Air Flight 801 accident had a diameter of **12 inches**, and the spill released **about 1,000 gallons** of oil."
+Q10,section,baseline,"['NTSB/AAR-00/02', 'NTSB/AAR-09/03', 'NTSB/AAR-11/02', 'NTSB/AAR-14/01', 'NTSB/AAR-15/03']","- Evidence:
+    - The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within 3 minutes of the alarm”【NTSB: AAR0002】.  
+
+- Answer:
+    - According to the ARFF fire crew chief, approximately **3 minutes** elapsed from the issuance of the Condition One alarm until five ARFF vehicles were actively suppressing the fire at the accident site."
+Q9,md_recursive,mq+hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-00/03', 'NTSB/AAR-04/04', 'NTSB/AAR-07/01']","**Evidence**
+- The accident report states that a **12‑inch fuel oil pipeline** was severed by the aircraft. [NTSB: AAR-00/01]  
+- The severed pipeline **spilled approximately 1,000 gallons of oil** in a localized area. [NTSB: AAR-00/01]
+
+**Answer**
+- **Diameter of the pipeline:** 12 inches.  
+- **Oil spilled:** About **1,000 gallons**."
+Q9,section,mq+hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-09/03']","- Evidence:
+    - The accident severed a **12‑inch** fuel oil pipeline, which spilled **approximately 1,000 gallons** of oil into the surrounding area【NTSB: AAR0001】.  
+
+- Answer:
+    - The severed fuel oil pipeline had a diameter of **12 inches**, and the spill released **about 1,000 gallons of oil**."
+Q10,md_recursive,hyde,"['NTSB/AAR-00/02', 'NTSB/AAR-04/01', 'NTSB/AAR-07/05', 'NTSB/AAR-08/01', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02', 'NTSB/AAR-16/02']","**Evidence**
+- The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression **within 3 minutes** of the alarm”【NTSB: AAR-00/02】.  
+
+**Answer**
+According to the ARFF fire crew chief in NTSB Report AAR‑00/02, roughly **3 minutes** elapsed from the issuance of the Condition One alarm until five ARFF vehicles were actively suppressing the fire at the accident site."
+G1,md_recursive,baseline,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02']","**Evidence**
+- The Board identified the **captain’s failure to adequately brief and execute the non‑precision approach** as a primary cause [NTSB: AAR-00/01].
+- The Board also cited the **first officer’s and flight engineer’s failure to effectively monitor and cross‑check the captain’s execution of the approach** [NTSB: AAR-00/01].
+- **Captain fatigue** was noted as a contributing factor to the crew’s performance deficiencies [NTSB: AAR-01/02].
+- **Korean Air’s inadequate flight‑crew training** was cited as a contributing factor [NTSB: AAR-00/01].
+- The **Federal Aviation Administration’s intentional inhibition of the Minimum Safe Altitude Warning (MSAW) system** at Guam and its failure to manage that system were also listed as contributing factors [NTSB: AAR-00/01].
+
+**Answer**
+The probable causes of the Korean Air Flight 801 crash were the captain’s inadequate briefing and execution of the non‑precision approach, compounded by the first officer’s and flight engineer’s failure to monitor and cross‑check that execution. Contributing factors included the captain’s fatigue, Korean Air’s insufficient flight‑crew training, and the FAA’s deliberate disabling and poor management of the airport’s Minimum Safe Altitude Warning system."
+Q10,section,hyde,"['NTSB/AAR-00/02', 'NTSB/AAR-05/01', 'NTSB/AAR-08/01', 'NTSB/AAR-09/03', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02', 'NTSB/AAR-15/03', 'NTSB/AAR-16/02']","**Evidence**
+- The ARFF fire crew chief stated that “five ARFF vehicles were engaged in fire suppression within **3 minutes** of the alarm” after the Condition One alarm was transmitted. [NTSB: AAR0002]
+
+**Answer**
+According to the ARFF fire crew chief in NTSB Aircraft Accident Report AAR‑00/02, it took exactly **three minutes** from the issuance of the Condition One alarm until five ARFF vehicles were actively suppressing the fire at the accident site."
+Q10,md_recursive,multi_query,"['NTSB/AAR-00/02', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02']","- Evidence:
+  - The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within 3 minutes of the alarm.” [NTSB: AAR-00/02]
+
+- Answer:
+  - According to the ARFF fire crew chief, **approximately 3 minutes** elapsed from the Condition One alarm until five ARFF vehicles were actively engaged in fire suppression at the accident site."
+Q10,section,multi_query,"['NTSB/AAR-00/02', 'NTSB/AAR-08/01', 'NTSB/AAR-09/03', 'NTSB/AAR-11/02']","- **Evidence:**
+  - The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within 3 minutes of the alarm”【NTSB: AAR0002】.  
+
+- **Answer:**
+  - According to the ARFF fire crew chief, **3 minutes** elapsed from the Condition One alarm until five ARFF vehicles were actively suppressing the fire at the accident site."
+G1,section,baseline,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02']","**Evidence**
+- The NTSB identified the **captain’s failure to adequately brief and execute the non‑precision approach** as a primary cause of the accident【NTSB: AAR0001】.  
+- The **first officer and flight engineer failed to effectively monitor and cross‑check** the captain’s execution of that approach【NTSB: AAR0001】.  
+- **Contributing factors** included the captain’s **fatigue**, which degraded his performance【NTSB: AAR0001】, and **Korean Air’s inadequate flight‑crew training** program【NTSB: AAR0001】.  
+- An additional contributing factor was the **FAA’s intentional inhibition of the Minimum Safe Altitude Warning (MSAW) system at Guam** and the agency’s failure to manage that system properly【NTSB: AAR0001】.  
+
+**Answer**
+The probable causes of the Korean Air Flight 801 crash were the captain’s inadequate briefing and execution of the non‑precision approach, compounded by the first officer’s and flight engineer’s failure to monitor and cross‑check his actions. Contributing to these failures were the captain’s fatigue, deficiencies in Korean Air’s flight‑crew training, and the FAA’s intentional disabling and mismanagement of Guam’s Minimum Safe Altitude Warning system."
+Q10,md_recursive,mq+hyde,"['NTSB/AAR-00/02', 'NTSB/AAR-07/05', 'NTSB/AAR-08/01', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02', 'NTSB/AAR-16/02']","- Evidence:
+    - The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within **3 minutes** of the alarm.” [NTSB: AAR-00/02]
+
+- Answer:
+    - According to the ARFF fire crew chief, **3 minutes** elapsed from the Condition One alarm until five ARFF vehicles were actively engaged in fire suppression at the accident site."
+G1,md_recursive,multi_query,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02']","**Evidence**
+- The captain failed to adequately brief and execute the non‑precision approach. [NTSB: AAR-00/01]  
+- The first officer and flight engineer failed to effectively monitor and cross‑check the captain’s execution of the approach. [NTSB: AAR-00/01]  
+- Contributing to these crew failures was the captain’s fatigue. [NTSB: AAR-00/01]  
+- Contributing was Korean Air’s inadequate flight‑crew training program. [NTSB: AAR-00/01]  
+- An additional contributing factor was the Federal Aviation Administration’s intentional inhibition of the Minimum Safe Altitude Warning (MSAW) system at Guam and its failure to manage that system. [NTSB: AAR-00/01]  
+
+**Answer**
+The probable cause of the Korean Air Flight 801 crash was the flight crew’s poor performance on the non‑precision approach: the captain did not properly brief or execute the approach, and the first officer and flight engineer did not adequately monitor or cross‑check his actions. These errors were compounded by the captain’s fatigue and by Korean Air’s insufficient flight‑crew training, with the FAA’s disabling of the MSAW warning system also contributing to the accident."
+G1,md_recursive,hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02', 'NTSB/AAR-10/01']","**Evidence**
+
+- **Human factors**  
+  - The captain failed to adequately brief and execute the non‑precision approach. [NTSB: AAR0001]  
+  - The first officer and flight engineer failed to effectively monitor and cross‑check the captain’s execution of the approach. [NTSB: AAR0001]  
+  - The captain was fatigued (having been awake for an extended period), which contributed to the performance lapses. [NTSB: AAR0001]  
+
+- **Organizational factors**  
+  - Korean Air’s flight‑crew training program was inadequate, contributing to the crew’s inability to properly conduct the approach. [NTSB: AAR0001]  
+  - The FAA intentionally inhibited the Minimum Safe Altitude Warning (MSAW) system at Guam and failed to manage that system appropriately, removing a critical safety net. [NTSB: AAR0102]  
+
+- **Aircraft/mechanical factors** – No aircraft‑related failures were cited as a cause in the provided excerpts.  
+
+- **Environmental factors** – No specific weather or terrain factors were identified as primary causes in the provided excerpts.  
+
+**Answer**
+
+The probable causes of the Korean Air Flight 801 crash were the captain’s failure to properly brief and execute the non‑precision approach, compounded by the first officer’s and flight engineer’s failure to monitor and cross‑check that execution. Human‑performance issues, especially the captain’s fatigue, and organizational shortcomings—namely Korean Air’s inadequate flight‑crew training and the FAA’s intentional inhibition and poor management of the Minimum Safe Altitude Warning system at Guam—also contributed to the accident. No aircraft‑mechanical or environmental causes were identified in the cited material."
+G2,md_recursive,baseline,"['DCA23LA125', 'NTSB/AAR-00/01', 'NTSB/AAR-05/02', 'NTSB/AAR-06/04', 'NTSB/AAR-09/06', 'NTSB/AAR-10/01', 'NTSB/AAR-16/03']","**Evidence:**
+- The provided excerpts include summaries from reports AAR1001, AIR2401, AAR0604, AAR0001, AAR0906, AAR0502, and AAR1603. None of these documents mention American Airlines Flight 1420 or any details about its crew resource management (CRM) factors.  
+
+**Answer:**
+Insufficient context – the supplied material does not contain information about crew resource management in the crash of American Airlines Flight 1420."
+Q10,section,mq+hyde,"['NTSB/AAR-00/02', 'NTSB/AAR-01/02', 'NTSB/AAR-08/01', 'NTSB/AAR-09/03', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02', 'NTSB/AAR-14/01', 'NTSB/AAR-15/03']","- Evidence:  
+  - The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within 3 minutes of the alarm” after the Condition One alarm was sounded. [NTSB: AAR0002]  
+
+- Answer:  
+  - According to the ARFF fire crew chief, **3 minutes** elapsed from the issuance of the Condition One alarm until five ARFF vehicles were actively suppressing the fire at the accident site."
+G1,section,hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02', 'NTSB/AAR-07/05', 'NTSB/AAR-08/02', 'NTSB/AAR-10/01']","- **Evidence**  
+  - The NTSB determined that the **captain failed to adequately brief and execute the non‑precision approach** and that the **first officer and flight engineer failed to effectively monitor and cross‑check** the captain’s execution【NTSB: AAR0001】.  
+  - **Human‑factor contributors** were the captain’s **fatigue** and **Korean Air’s inadequate flight‑crew training**【NTSB: AAR0001】.  
+  - **Organizational/Regulatory contributors** included the **FAA’s intentional inhibition of the Minimum Safe Altitude Warning (MSAW) system** at Guam and the agency’s **failure to adequately manage that system**【NTSB: AAR0001】.  
+
+- **Answer**  
+  The crash of Korean Air Flight 801 was primarily caused by crew performance errors: the captain did not properly brief or fly the non‑precision approach, and the first officer and flight engineer did not monitor or cross‑check his actions. These errors were compounded by the captain’s fatigue and shortcomings in Korean Air’s pilot training program. Additionally, the FAA’s decision to disable the airport’s MSAW safety‑alert system and its inadequate oversight of that system contributed to the accident."
+G1,section,multi_query,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02']","**Evidence**
+
+- The NTSB identified the **captain’s failure to adequately brief and execute the non‑precision (localizer‑only) approach** as a primary cause【NTSB: AAR0001, Section 3.2 Probable Cause】.  
+- The **first officer’s and flight‑engineer’s failure to effectively monitor and cross‑check** the captain’s execution of the approach was also cited as a primary cause【NTSB: AAR0001, Section 3.2 Probable Cause】.  
+- **Captain fatigue** degraded his performance and contributed to the inadequate briefing and execution【NTSB: AAR0001, Section 3.1 Findings】 and is noted as a contributing factor in the executive summary【NTSB: AAR0001, Executive Summary】.  
+- **Korean Air’s inadequate flight‑crew training** was a contributing factor to the crew’s performance deficiencies【NTSB: AAR0001, Section 3.2 Probable Cause】.  
+- The **FAA’s intentional inhibition of the Minimum Safe Altitude Warning (MSAW) system** at Guam and the agency’s failure to manage that system contributed to the accident【NTSB: AAR0001, Section 2.1 General】 and is listed among the contributing factors【NTSB: AAR0001, Section 3.2 Probable Cause】.  
+
+**Answer**
+
+The probable causes of the Korean Air Flight 801 crash were the captain’s inadequate briefing and execution of the non‑precision approach, compounded by the first officer’s and flight engineer’s failure to monitor and cross‑check that execution. Contributing factors included the captain’s fatigue, Korean Air’s insufficient flight‑crew training, and the FAA’s intentional inhibition and poor management of the Minimum Safe Altitude Warning system at Guam."
+G2,section,baseline,"['DCA23LA125', 'NTSB/AAR-02/01', 'NTSB/AAR-06/04', 'NTSB/AAR-07/01', 'NTSB/AAR-10/01', 'NTSB/AAR-11/01', 'NTSB/AAR-11/02', 'NTSB/AAR-16/03', 'NTSB/AAR-19/02']","**Evidence:**
+- The supplied excerpts cover accidents involving East Coast Jets Flight 81, Execuflight Flight 1526, Empire Airlines Flight 8284, Pinnacle Airlines Flight 3701, Alaska Airlines Flight 261, a Bombardier Challenger take‑off accident, a Learjet 35A circling‑approach accident, Colgan Air Flight 3407, and related CRM training discussions.  
+- None of the provided excerpts mention American Airlines Flight 1420, its crew, aircraft, or any CRM‑related findings for that specific accident.  
+
+**Answer:**
+Insufficient context. The available excerpts do not contain information about the role of crew resource management in the crash of American Airlines Flight 1420, so a supported answer cannot be given."
+G1,md_recursive,mq+hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02']","**Evidence**
+
+- The NTSB identified the **captain’s failure to adequately brief and execute the non‑precision approach** as a primary cause of the accident【NTSB: AAR-00/01】.  
+- The **first officer’s and flight engineer’s failure to effectively monitor and cross‑check** the captain’s execution of the approach was also cited as a cause【NTSB: AAR-00/01】.  
+- **Captain fatigue** was listed as a contributing human‑factor element that degraded the captain’s performance【NTSB: AAR-00/01】.  
+- **Korean Air’s inadequate flight‑crew training** was identified as an organizational factor that contributed to the crew’s deficiencies【NTSB: AAR-00/01】.  
+- The **FAA’s intentional inhibition of the Minimum Safe Altitude Warning (MSAW) system** at Guam and its failure to manage that system were noted as additional contributing factors【NTSB: AAR-01/02】.
+
+**Answer**
+
+The probable causes of the Korean Air Flight 801 crash were primarily human‑performance failures: the captain did not properly brief or execute the non‑precision approach, and the first officer and flight engineer did not adequately monitor or cross‑check the captain’s actions. These crew errors were compounded by the captain’s fatigue and by Korean Air’s insufficient flight‑crew training. An organizational contribution came from the FAA’s decision to disable the Minimum Safe Altitude Warning system at Guam and its inadequate oversight of that safety system."
+G1,section,mq+hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-01/02']","**Evidence**
+- The NTSB determined the **probable cause** was “the captain’s failure to adequately brief and execute the non‑precision approach and the first officer’s and flight‑engineer’s failure to effectively monitor and cross‑check the captain’s execution of the approach.” [NTSB: AAR0001]  
+- **Contributing factors** identified were:  
+  - **Captain’s fatigue**, which degraded his performance (the captain had been awake for 11 hours and made fatigue‑related comments on the CVR). [NTSB: AAR0001]  
+  - **Korean Air’s inadequate flight‑crew training**, which left the crew ill‑prepared for the approach. [NTSB: AAR0001]  
+  - **FAA’s intentional inhibition of the Minimum Safe Altitude Warning (MSAW) system** at Guam and the agency’s failure to manage that system, removing a safety net that might have warned of terrain proximity. [NTSB: AAR0001]  
+
+**Answer**
+The crash of Korean Air Flight 801 was primarily caused by crew performance errors: the captain did not properly brief or execute the non‑precision (localizer‑only) approach, and the first officer and flight engineer failed to monitor and cross‑check his actions. These errors were compounded by the captain’s fatigue, deficiencies in Korean Air’s flight‑crew training program, and the FAA’s decision to disable the Minimum Safe Altitude Warning system at Guam, which eliminated an important terrain‑warning safeguard."
+G2,md_recursive,multi_query,"['DCA23LA125', 'NTSB/AAR-01/02', 'NTSB/AAR-10/01', 'NTSB/AAR-16/03', 'NTSB/AAR-18/02']","**Evidence:**
+- The executive summary and 3.1 Findings for American Airlines Flight 1420 describe the probable causes as the crew’s failure to discontinue the approach in severe thunderstorms, failure to ensure spoiler deployment, fatigue‑related performance impairment, and exceeding cross‑wind limits, but they contain no reference to crew‑resource‑management (CRM) training, procedures, or performance [ NTSB:AAR-01/02 ].
+- The provided excerpts from other reports (e.g., AAR‑10‑01, AAR‑16‑03, AAR‑18‑02) discuss CRM deficiencies in separate accidents, but none of those CRM findings are linked to Flight 1420 [ NTSB:AAR-10/01 ; NTSB:AAR-16/03 ; NTSB:AAR-18/02 ].
+
+**Answer:**
+The available context does not contain any information about crew‑resource‑management (CRM) factors influencing the crash of American Airlines Flight 1420. Consequently, based on the provided excerpts, we cannot determine a role for CRM in that accident. **Insufficient context**."
+G2,md_recursive,hyde,"['DCA23LA125', 'NTSB/AAR-06/04', 'NTSB/AAR-10/01', 'NTSB/AAR-10/02', 'NTSB/AAR-10/03', 'NTSB/AAR-11/02']","**Evidence:**
+- The provided excerpts discuss CRM issues in several accidents (e.g., AAR1102, AAR1001, AAR1002, AAR1003) but contain no information about American Airlines Flight 1420.  
+
+**Answer:**
+Insufficient context. The supplied material does not include any details on crew resource management related to the crash of American Airlines Flight 1420, so a conclusion cannot be drawn from the given excerpts."
+G3,md_recursive,baseline,"['NTSB/AAR-00/03', 'NTSB/AAR-03/01', 'NTSB/AAR-13/02']","**Evidence**
+
+- The accident was initiated by an **explosion of the center wing fuel tank (CWT)** caused by ignition of a flammable fuel‑air mixture in the tank【NTSB: AAR0003】.  
+- **Fuel‑air vapor flammability**: Testing showed Jet‑A vapors in conditions simulating the flight (pressure, altitude, fuel load) were flammable at temperatures as low as **96.4 °F**, confirming the ullage was combustible at the time of the accident【NTSB: AAR0003】.  
+- **Most likely ignition source**: A **short circuit** that allowed excess voltage to enter the CWT fuel‑quantity‑indication system wiring is identified as the most probable source of ignition energy【NTSB: AAR0003】.  
+- **Other ignition sources ruled out**: Lightning/meteor strike, missile fragment, explosive charge, auto‑ignition, hot‑surface ignition, fire migration, or uncontained engine failure were deemed **very unlikely**【NTSB: AAR0003】.  
+- **Design and certification issues**:  
+  - The aircraft’s design placed **heat sources beneath the CWT** with no means to reduce heat transfer or render the vapor non‑flammable【NTSB: AAR0003】.  
+  - The certification concept relied on **precluding all ignition sources** rather than addressing fuel‑tank flammability, a concept later shown to be insufficient【NTSB: AAR0003】.  
+  - Existing wire‑separation standards were found inadequate to protect against damage from short circuits【NTSB: AAR0003】.  
+- **Organizational/Regulatory factors**: The investigation highlighted a **lack of pertinent research data** on Jet‑A fuel vapor behavior, which hampered the analysis and pointed to gaps in FAA regulations and guidance that were later addressed in draft AC 25.981‑1X and NPRM 99‑18【NTSB: AAR0003】.  
+
+**Answer**
+
+The primary findings of the TWA Flight 800 investigation are:
+
+1. **Mechanical/Environmental** – The center wing fuel tank exploded because a flammable fuel‑air mixture ignited; the mixture was indeed flammable at the ambient temperature (≈96 °F).  
+2. **Ignition source** – The most plausible cause was a short‑circuit that introduced excess voltage into the fuel‑quantity‑indication wiring, while other potential sources (lightning, missile, etc.) were ruled out.  
+3. **Design/Organizational** – The aircraft’s design placed heat sources beneath the tank and relied on a certification philosophy that assumed ignition sources could be fully eliminated, a premise proven inadequate. Existing wiring‑separation standards were insufficient, and the lack of comprehensive fuel‑vapor research limited the safety knowledge base.  
+
+These findings collectively point to a combination of **fuel‑tank flammability, an electrical fault, and design/ certification shortcomings** as the root contributors to the explosion."
+G2,section,multi_query,"['DCA23LA125', 'NTSB/AAR-01/02', 'NTSB/AAR-05/02', 'NTSB/AAR-07/01', 'NTSB/AAR-09/03', 'NTSB/AAR-16/03', 'NTSB/AAR-18/02']","**Evidence**
+
+- The NTSB identified the **flight crew’s failure to discontinue the approach** in severe thunderstorms and the **failure to ensure spoiler deployment after touchdown** as the probable causes of the accident【NTSB: AAR0102】.  
+- Contributing factors listed were the crew’s **impaired performance due to fatigue and situational stress**, the **decision to continue the approach despite exceeding the company’s maximum cross‑wind limit**, and **excessive use of reverse thrust**【NTSB: AAR0102】.  
+- The investigation’s analysis emphasized **human‑factor elements such as stress, fatigue, and decision‑making** in the crew’s performance, which are core components of effective crew‑resource‑management (CRM)【NTSB: AAR0102】.  
+
+**Answer**
+
+Crew‑resource‑management (CRM) deficiencies were a central element in the crash of American Airlines Flight 1420.  The crew’s impaired performance—stemming from fatigue, stress, and poor workload and decision‑making—led them to continue an approach into severe thunderstorms, exceed the airline’s cross‑wind limits, and neglect proper spoiler deployment after landing.  These breakdowns in communication, situational awareness, and adherence to standard operating procedures—key aspects of CRM—directly contributed to the loss of control and runway overrun that caused the accident.  No separate CRM training or procedural failures were cited, but the identified human‑factor shortcomings illustrate that inadequate CRM played a decisive role in the event【NTSB: AAR0102】."
+G2,section,hyde,"['NTSB/AAR-00/01', 'NTSB/AAR-03/0', 'NTSB/AAR-06/04', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-14/01', 'NTSB/AAR-14/02', 'NTSB/AAR-16/03']","**Evidence:**
+- The provided excerpts cover accident reports AAR1002, AAR1603, AAR1402, AAR1102, AAR0303, AAR0001, AAR1401, AAR0604, and related sections on crew resource management (CRM) for those events.  
+- None of the excerpts mention American Airlines Flight 1420, its circumstances, or any CRM analysis specific to that flight.  
+
+**Answer:**
+Insufficient context. The supplied material does not contain information about crew resource management in the crash of American Airlines Flight 1420, so a supported answer cannot be provided."
+G2,md_recursive,mq+hyde,"['DCA23LA125', 'NTSB/AAR-01/02', 'NTSB/AAR-10/01', 'NTSB/AAR-16/03', 'NTSB/AAR-18/02']","**Evidence**
+- The executive summary for American Airlines Flight 1420 (Report AAR0102) lists the probable causes and contributing factors as the crew’s failure to discontinue the approach in severe thunderstorms, failure to extend spoilers after touchdown, fatigue‑related performance impairment, exceeding the company’s cross‑wind limit, and improper use of reverse thrust [NTSB: AAR0102].
+- No statements in the provided excerpts reference crew‑resource‑management (CRM) training, CRM deficiencies, or CRM‑related actions for Flight 1420 [NTSB: AAR0102].
+
+**Answer**
+Insufficient context. The supplied excerpts for American Airlines Flight 1420 do not contain information about the role of crew‑resource‑management in the accident, so a conclusion cannot be drawn from the available material."
+G3,md_recursive,multi_query,"['NTSB/AAR-00/03', 'NTSB/AAR-06/03']","**Evidence**
+
+- The in‑flight breakup was initiated by an explosion of the center wing fuel tank (CWT) caused by ignition of a flammable fuel‑air mixture in the tank. [NTSB: AAR0003]  
+- Testing showed that Jet‑A fuel vapors under the pressure, altitude and fuel‑mass conditions of the flight were flammable at temperatures as low as 96.4 °F, confirming that the ullage vapors were flammable at the time of the accident. [NTSB: AAR0003]  
+- A short circuit that allowed excess voltage to enter the CWT fuel‑quantity‑indication system wiring is identified as the **most likely** source of ignition energy. [NTSB: AAR0003]  
+- Electromagnetic interference from other aircraft wiring was judged **unlikely** to have ignited the vapors. [NTSB: AAR0003]  
+- The explosion generated sufficient internal pressure to rupture the tank and cause the aircraft’s structural breakup. [NTSB: AAR0003]  
+- Contributing organizational factors included the aircraft’s design and certification concept, which assumed that fuel‑tank explosions could be prevented solely by eliminating ignition sources, and the presence of heat sources beneath the CWT with no means to reduce heat transfer or render the vapors non‑flammable. [NTSB: AAR0003]  
+
+**Answer**
+
+The NTSB’s principal findings for TWA Flight 800 are:
+
+1. **Mechanical/Environmental** – The center wing fuel tank contained a flammable fuel‑air mixture; the temperature and pressure conditions present at the time made the vapors ignitable.  
+2. **Ignition Source** – The most probable ignition was a short‑circuit that introduced excess voltage into the fuel‑quantity‑indication wiring of the CWT; other wiring interference was ruled out.  
+3. **Effect of Explosion** – The resulting fuel‑tank explosion produced enough pressure to rupture the tank and precipitate the aircraft’s in‑flight breakup.  
+4. **Organizational/Design** – The aircraft’s design and certification relied on the premise that eliminating ignition sources alone would prevent tank explosions and did not address heat sources beneath the tank, a shortcoming that contributed to the accident.  
+
+These findings collectively point to a mechanically induced explosion (flammable vapors ignited by an electrical fault) compounded by design and certification deficiencies."
+G3,section,baseline,['NTSB/AAR-00/03'],"**Evidence**
+
+- The accident was caused by an **explosion of the center wing fuel tank (CWT)** that ignited a flammable fuel‑air mixture inside the tank. [NTSB: AAR0003]  
+- The **most likely ignition source** was a **short‑circuit outside the CWT** that allowed excessive voltage to enter the tank through the **fuel‑quantity‑indication‑system (FQIS) wiring**. [NTSB: AAR0003]  
+- **Electromagnetic interference** from personal electronic devices, external radio‑frequency sources, lightning, missile fragments, bombs, or other external events **did not contribute** to the ignition. [NTSB: AAR0003]  
+- The **fuel‑air vapor in the CWT was flammable** at the time of the accident (temperatures 101 – 127 °F; vapors flammable as low as 96.4 °F). [NTSB: AAR0003]  
+- **Silver‑sulfide deposits** on FQIS components inside the tank **pose an ignition risk**, though the exact location of ignition could not be determined. [NTSB: AAR0003]  
+- **Design and certification concepts** that relied solely on eliminating ignition sources, and the **placement of heat sources beneath the CWT with no mitigation** (e.g., nitrogen inerting), were identified as **contributing factors**. [NTSB: AAR0003]  
+- **Wire‑separation standards** may not provide adequate protection against damage from short circuits, and Boeing’s practice of allowing parts <3 inches to be electrically unbonded may have reduced protection against static‑electric ignition. [NTSB: AAR0003]  
+- **Human factors**: The flight crew was fully certified, medically fit, and had received required training; no crew performance issues were found. [NTSB: AAR0003]  
+- **Environmental factors**: Light winds and scattered clouds; no significant meteorological conditions that could have affected the flight. [NTSB: AAR0003]  
+- **Organizational factors**: The accident highlighted shortcomings in aircraft design, certification, and maintenance practices related to fuel‑tank safety. [NTSB: AAR0003]  
+
+**Answer**
+
+The NTSB’s investigation concluded that TWA Flight 800 was destroyed by an explosion of its center wing fuel tank. The explosion resulted from ignition of a flammable fuel‑air mixture; the most probable ignition source was a short circuit that introduced excess voltage into the tank via the fuel‑quantity‑indication wiring. Electromagnetic interference, lightning, missiles, bombs, or crew error were ruled out. The fuel vapor was indeed flammable at the measured temperatures, and deposits such as silver‑sulfide on wiring could have facilitated ignition. Contributing causes included design and certification practices that relied only on eliminating ignition sources, the presence of heat sources beneath the tank without mitigation, inadequate wire‑separation standards, and Boeing’s allowance for small unbonded parts. Human performance and weather conditions were not factors. Overall, the findings point to a mechanical/electrical ignition event exacerbated by aircraft design and certification shortcomings."
+G2,section,mq+hyde,"['DCA23LA125', 'NTSB/AAR-01/02', 'NTSB/AAR-05/02', 'NTSB/AAR-07/01', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-16/03', 'NTSB/AAR-18/02']","**Evidence**
+- The NTSB determined that the **probable causes** of the accident were the flight crew’s failure to discontinue the approach in severe thunderstorms and the failure to ensure the spoilers were extended after touchdown [NTSB: AAR0102].
+- **Contributing factors** included the crew’s **impaired performance due to fatigue and situational stress**, as well as other decision‑making errors (e.g., continuing the approach despite excessive cross‑wind) [NTSB: AAR0102].
+- The report’s discussion of the accident focuses on **flight‑crew performance, decision‑making, and fatigue**, but it does **not contain a specific analysis or finding that attributes the crash to deficiencies in crew‑resource‑management (CRM) practices** [NTSB: AAR0102].
+
+**Answer**
+The NTSB’s investigation of American Airlines Flight 1420 did not identify a direct CRM failure as a causal factor. Instead, the crash was attributed to the crew’s poor decision‑making—specifically, continuing the approach into severe weather and not extending the spoilers—combined with **fatigue‑related performance impairment and situational stress**. While these issues relate to overall crew performance, the provided excerpts do not contain an explicit assessment of CRM deficiencies in this accident. [NTSB: AAR0102]"
+G3,md_recursive,hyde,"['NTSB/AAR-00/03', 'NTSB/AAR-11/05']","**Evidence**
+
+- The accident was caused by an explosion of the center wing fuel tank (CWT) that ignited a flammable fuel‑air mixture in the tank. [NTSB: AAR0003]  
+- Laboratory testing showed that the fuel vapors in the CWT were flammable at temperatures as low as 96.4 °F, confirming a combustible mixture was present at the time of the accident. [NTSB: AAR0003]  
+- Tests and computer modeling demonstrated that a localized ignition could generate internal pressures of 39.2 – 52.2 psi (above ambient), sufficient to rupture the tank and produce the observed wreckage damage. [NTSB: AAR0003]  
+- The most likely ignition source was a short‑circuit that allowed excess voltage to enter the CWT fuel‑quantity‑indication system wiring; electromagnetic interference from other aircraft wiring was deemed unlikely. [NTSB: AAR0003]  
+- Existing wire‑separation standards were found inadequate to protect against such short‑circuit damage. [NTSB: AAR0003]  
+- Other potential ignition sources (lightning, missile fragment, explosive charge, hot‑surface ignition, fire migration, uncontained engine failure) were judged “very unlikely.” [NTSB: AAR0003]  
+- Contributing organizational/design factors included: (1) a certification concept that assumed fuel‑tank explosions could be prevented solely by eliminating ignition sources, and (2) a design that placed heat sources beneath the CWT with no means to reduce heat transfer or render the vapor non‑flammable. [NTSB: AAR0003]  
+
+**Answer**
+
+The NTSB’s main findings for TWA Flight 800 are that a combustible fuel‑air mixture existed in the center wing fuel tank, and a short‑circuit in the fuel‑quantity‑indication wiring most likely supplied the ignition energy. The resulting explosion generated pressures well above the tank’s structural limits, causing it to rupture. The investigation also identified design and certification shortcomings—particularly inadequate wiring separation standards and the placement of heat sources beneath the tank—as contributing factors that allowed the explosion to occur. All other examined ignition possibilities were considered highly unlikely."
+G3,section,hyde,"['NTSB/AAR-00/03', 'NTSB/AAR-07/04', 'NTSB/AAR-18/01']","**Evidence**
+
+- The accident was caused by an explosion of the center wing fuel tank (CWT) that ignited a flammable fuel‑air mixture inside the tank. [NTSB: AAR0003]  
+- The most likely ignition source was a short‑circuit outside the CWT that allowed excessive voltage to enter the fuel‑quantity‑indication‑system (FQIS) wiring. [NTSB: AAR0003]  
+- Electromagnetic interference from personal electronic devices, aircraft system wiring, lightning, missiles, or other external sources was ruled out as a cause. [NTSB: AAR0003]  
+- Existing wire‑separation standards may not provide adequate protection against damage from short circuits. [NTSB: AAR0003]  
+- Silver‑sulfide deposits on FQIS components inside the tank could increase ignition risk, although the exact ignition location could not be determined. [NTSB: AAR0003]  
+- Fuel‑vapour temperatures in the CWT at the time (101 – 127 °F) were within the range where Jet‑A vapour is flammable; laboratory tests showed that combustion under those conditions can generate pressures of 39–52 psi, exceeding the tank’s structural limit (20‑25 psi). [NTSB: AAR0003]  
+- Computer‑model and full‑scale tests confirmed that a localized ignition could produce internal pressures sufficient to rupture the CWT and cause the observed breakup of the aircraft. [NTSB: AAR0003]  
+- Contributing organizational factors included the design and certification philosophy that relied solely on eliminating ignition sources, and the Boeing 747 design that placed heat sources beneath the CWT with no means to reduce heat transfer or render the vapour non‑flammable. [NTSB: AAR0003]  
+
+**Answer**
+
+The NTSB’s investigation of TWA Flight 800 concluded that the crash resulted from an explosion of the center wing fuel tank. The tank contained a flammable fuel‑air mixture at temperatures (≈101‑127 °F) that allowed ignition. The most probable ignition source was a short circuit in the fuel‑quantity‑indication wiring that introduced excess voltage into the tank; other external sources (personal electronics, lightning, etc.) were excluded. Design‑related issues—insufficient wire‑separation standards, possible silver‑sulfide deposits on FQIS components, and a certification approach that assumed eliminating all ignition sources would be enough—contributed to the event. Laboratory, full‑scale, and computer simulations demonstrated that such an ignition could generate pressures far above the tank’s structural limits, leading to catastrophic failure of the tank and the aircraft."
+G3,md_recursive,mq+hyde,"['NTSB/AAR-00/03', 'NTSB/AAR-11/05']","**Evidence**
+
+- The accident was initiated by an explosion of the center wing fuel tank (CWT) caused by ignition of a flammable fuel‑air mixture in the tank. [NTSB: AAR0003]  
+- Testing showed that Jet‑A fuel vapors in the CWT ullage were flammable at temperatures as low as 96.4 °F, confirming the presence of a combustible mixture at the time of the accident. [NTSB: AAR0003]  
+- A short circuit that allowed excess voltage to enter the CWT fuel‑quantity‑indication system wiring is identified as the **most likely** source of ignition energy. [NTSB: AAR0003]  
+- Electromagnetic interference from aircraft wiring, lightning, missile fragments, external explosives, hot‑surface ignition, fire migration, or an uncontained engine failure were all deemed **very unlikely** ignition sources. [NTSB: AAR0003]  
+- The resulting fuel‑air explosion could generate sufficient internal pressure to rupture the tank and cause the in‑flight breakup of the aircraft. [NTSB: AAR0003]  
+- Contributing organizational/design factors included:  
+  * The certification concept that fuel‑tank explosions could be prevented solely by precluding ignition sources.  
+  * The 747 design placed heat sources beneath the CWT with no means to reduce heat transfer or render the ullage non‑flammable. [NTSB: AAR0003]  
+
+**Answer**
+
+The NTSB’s primary findings for TWA Flight 800 are that a combustible fuel‑air mixture existed in the center wing fuel tank, and the most probable ignition source was a short‑circuit that introduced excess voltage into the tank’s fuel‑quantity‑indication wiring. This ignition produced a fuel‑air explosion capable of generating enough pressure to rupture the tank and cause the aircraft’s breakup. The investigation ruled out external sources such as lightning, missiles, or engine failure, and highlighted that design and certification practices—specifically the lack of safeguards against heat transfer to the tank and reliance on eliminating all ignition sources—contributed to the accident."
+G3,section,multi_query,"['NTSB/AAR-00/03', 'NTSB/AAR-06/03', 'NTSB/AAR-19/04']","**Evidence**
+
+- **Mechanical/aircraft factors**  
+  - The accident was initiated by an explosion of the center‑wing fuel tank (CWT) caused by ignition of a flammable fuel‑air mixture in the tank. The most likely ignition source was a short‑circuit outside the tank that allowed excessive voltage to enter the fuel‑quantity‑indication‑system (FQIS) wiring. [ NTSB: AAR0003 ]  
+  - The fuel‑air vapor in the CWT was flammable at the time of the accident; laboratory testing showed vapors were flammable at temperatures as low as 96.4 °F, and the tank temperature was estimated between 101 °F and 127 °F. [ NTSB: AAR0003 ]  
+  - Silver‑sulfide deposits on FQIS components inside the tank posed an additional ignition risk. [ NTSB: AAR0003 ]  
+  - Existing wire‑separation standards and Boeing’s practice of allowing parts < 3 inches unbonded may not have provided adequate protection against short‑circuit‑induced ignition. [ NTSB: AAR0003 ]
+
+- **Human factors**  
+  - The flight crew was fully certificated, qualified, and showed no medical or behavioral issues that could have contributed to the accident. [ NTSB: AAR0003 ]
+
+- **Environmental factors**  
+  - Weather at the time was benign: light winds and scattered clouds with no significant meteorological conditions that could have affected the aircraft. [ NTSB: AAR0003 ]
+
+- **Organizational factors**  
+  - Contributing were the design and certification philosophy that assumed fuel‑tank explosions could be prevented solely by eliminating ignition sources, and the 747 design that placed heat‑generating equipment beneath the CWT without means to reduce heat transfer or render the vapor non‑flammable. [ NTSB: AAR0003 ]  
+  - The investigation ruled out other possible ignition sources (lightning, missile, bomb, external RF, personal electronic devices, etc.). [ NTSB: AAR0003 ]
+
+**Answer**
+
+The NTSB’s main findings for TWA Flight 800 are that a flammable fuel‑air mixture existed in the center‑wing fuel tank, and the most probable ignition source was a short‑circuit that introduced excess voltage into the fuel‑quantity‑indication wiring. Design shortcomings—such as inadequate wire‑separation standards, unbonded small parts, and heat sources beneath the tank—combined with a certification approach that relied only on eliminating ignition sources, allowed the explosion to occur. Human performance and weather conditions were not contributory; the crew was properly trained and the environment was benign. These mechanical and organizational deficiencies were identified as the primary causes of the fuel‑tank explosion."
+G3,section,mq+hyde,"['NTSB/AAR-00/03', 'NTSB/AAR-06/03', 'NTSB/AAR-18/01']","**Evidence**
+
+- The accident was caused by an explosion of the center wing fuel tank (CWT) that ignited a flammable fuel‑air mixture.  The most likely ignition source was a short‑circuit outside the tank that allowed excess voltage to enter the fuel‑quantity‑indication‑system (FQIS) wiring. [NTSB: AAR0003]  
+- The fuel‑air vapor in the CWT was flammable at the time of the accident; laboratory testing showed vapor temperatures of 101 – 127 °F (flammable down to 96.4 °F). [NTSB: AAR0003]  
+- Combustion of that vapor could generate internal pressures of 39.2 – 52.2 psi—well above the tank’s structural limit of 20 – 25 psi—sufficient to rupture the tank and cause the in‑flight breakup. [NTSB: AAR0003]  
+- Electromagnetic interference from personal electronic devices, external radio‑frequency sources, lightning, missile fragments, hot‑surface ignition, or other external sources was ruled out as a cause. [NTSB: AAR0003]  
+- Silver‑sulfide deposits on FQIS components inside the tank posed a potential ignition risk, but the exact ignition location could not be determined. [NTSB: AAR0003]  
+- Existing wire‑separation standards may not adequately protect against damage from short circuits, indicating a design vulnerability. [NTSB: AAR0003]  
+- Human‑factor findings: the flight crew was fully certificated, medically fit, and received required training; no crew actions contributed to the explosion. [NTSB: AAR0003]  
+- Environmental conditions at the time were benign (light winds, scattered clouds, no significant weather). [NTSB: AAR0003]  
+- Organizational/design factors: the Boeing 747 design placed heat sources beneath the CWT with no means to reduce heat transfer or render the vapor non‑flammable, and the certification concept relied solely on eliminating ignition sources rather than addressing tank vulnerability. [NTSB: AAR0003]  
+
+**Answer**
+
+The NTSB’s investigation of TWA Flight 800 concluded that the aircraft’s center wing fuel tank exploded because a flammable fuel‑air mixture ignited, most likely due to a short‑circuit that introduced excess voltage into the fuel‑quantity‑indication wiring. Laboratory and test data confirmed that the vapor was flammable at the measured temperatures and that the resulting pressure surge could exceed the tank’s structural limits, causing catastrophic failure. The board ruled out external ignition sources (e.g., electronic devices, lightning, missiles) and noted that design and certification practices—specifically, heat sources beneath the tank and reliance on eliminating ignition sources without mitigating tank vulnerability—were key contributing organizational factors. Human performance and weather conditions were not contributory."

@@ -7,6 +7,7 @@ Run: streamlit run src/ui/app.py
 """
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import streamlit as st
 
@@ -153,25 +154,44 @@ if query:
         with st.spinner("Step 1/4 — Expanding query variants..."):
             queries = expand_query_variants(query)
 
-        # Step 2: Multi-Query expansion (optional, slow — LLM API call)
-        if use_multi_query:
-            mq_label = "GPT" if llm_provider == "gpt" else "DeepSeek"
-            with st.spinner(f"Step 2/4 — Generating multi-query variants ({mq_label})..."):
-                multi_query_variants = generate_multi_queries(query, model=llm_provider)
-                if multi_query_variants:
-                    queries.extend(multi_query_variants)
+        # Step 2: Augmentation — multi-query / HyDE / LLM knowledge fired in parallel
+        aug_futures = {}
+        active_augs = [
+            label for label, enabled in [
+                ("multi-query", use_multi_query),
+                ("HyDE", use_hyde),
+                ("LLM knowledge", use_knowledge_doc),
+            ] if enabled
+        ]
 
-        # Step 2b: HyDE expansion (optional, LLM API call)
-        if use_hyde:
-            with st.spinner("Step 2b/4 — Generating HyDE hypothetical snippets..."):
-                hyde_docs = generate_hyde_documents(query, num_docs=2, llm_provider=llm_provider, ollama_model=ollama_model)
-                if hyde_docs:
-                    queries.extend(hyde_docs)
+        if active_augs:
+            spinner_label = "Step 2/4 — Generating " + " + ".join(active_augs) + " (parallel)..."
+            with st.spinner(spinner_label):
+                with ThreadPoolExecutor(max_workers=3) as executor:
+                    if use_multi_query:
+                        aug_futures["mq"] = executor.submit(
+                            generate_multi_queries, query, llm_provider
+                        )
+                    if use_hyde:
+                        aug_futures["hyde"] = executor.submit(
+                            generate_hyde_documents, query, 2, llm_provider, ollama_model
+                        )
+                    if use_knowledge_doc:
+                        aug_futures["llm_k"] = executor.submit(
+                            generate_knowledge_doc, query, llm_provider, ollama_model
+                        )
+                    # Block until all complete (executor context manager handles this)
 
-        # Step 2c: LLM knowledge augmentation (semantic-only, separate from HyDE)
-        if use_knowledge_doc:
-            with st.spinner("Step 2c/4 — Generating LLM knowledge answer..."):
-                knowledge_result = generate_knowledge_doc(query, llm_provider=llm_provider, ollama_model=ollama_model)
+            if "mq" in aug_futures:
+                multi_query_variants = aug_futures["mq"].result() or []
+                queries.extend(multi_query_variants)
+
+            if "hyde" in aug_futures:
+                hyde_docs = aug_futures["hyde"].result() or []
+                queries.extend(hyde_docs)
+
+            if "llm_k" in aug_futures:
+                knowledge_result = aug_futures["llm_k"].result()
                 knowledge_doc = knowledge_result.narrative
                 llm_ntsb = knowledge_result.ntsb_number
                 llm_confidence = knowledge_result.confidence

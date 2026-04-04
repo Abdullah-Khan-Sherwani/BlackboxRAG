@@ -526,73 +526,152 @@ def _validate_ntsb_number(ntsb_number: str, narrative: str = "") -> str:
     return matched
 
 
+# # OLD LLM KNOWLEDGE AUGMENTATION — COMMENTED OUT
+# # Used DeepSeek/GPT via call_llm with JSON response format
+# def generate_knowledge_doc(query: str, llm_provider: str = "nvidia",
+# #                            ollama_model: str = "qwen2.5:32b") -> KnowledgeResult:
+# #     prompt = f"""You are an aviation accident investigator with deep knowledge of NTSB investigations from 1996 to 2025.
+# #
+# # Answer the following question by writing a concise investigative narrative in the style of an NTSB report finding.
+# # Use precise technical language, third-person past tense, and include specific details such as flight hours, system states,
+# # crew actions, meteorological conditions, or causal factors as appropriate. Do not hedge or qualify — write as a definitive finding.
+# # Only draw on accidents and events from NTSB reports between 1996 and 2025.
+# # Keep the narrative to 3-4 sentences.
+# #
+# # Additionally, if you can identify the specific NTSB accident report this question is about, provide its report number
+# # (e.g., "NTSB/AAR-18/01", "NTSB/AAR-14/01"). If you are not confident, leave the report number empty.
+# #
+# # Respond in JSON format with exactly these keys:
+# # - "narrative": your investigative narrative (string)
+# # - "ntsb_number": the NTSB report number if known, otherwise "" (string)
+# # - "confidence": how confident you are in the report number — "high", "medium", "low", or "none" (string)
+# #
+# # Question: {query}
+# # """
+# #     (called via call_llm / call_ollama with response_format={"type": "json_object"})
+# #     (parsed JSON → KnowledgeResult(narrative, ntsb_number, confidence))
+
+
 def generate_knowledge_doc(query: str, llm_provider: str = "nvidia",
                            ollama_model: str = "qwen2.5:32b") -> KnowledgeResult:
-    """Generate a direct answer using the LLM's own aviation knowledge.
+    """Generate NTSB investigator answers using NVIDIA API with specialized prompts.
+
+    Uses nvidia/llama-3.1-nemotron-ultra-253b-v1 via NVIDIA's OpenAI-compatible API
+    with strict constraints: only official NTSB reports, US jurisdiction only,
+    no external knowledge.
 
     Returns a KnowledgeResult with the narrative, detected NTSB report number,
-    and the LLM's confidence in that identification.
+    and confidence level.
 
     The narrative is used for semantic retrieval — not BM25 — to pull the
     search into answer-space. The report number is used to filter Pinecone
     results to the correct accident.
     """
-    prompt = f"""You are an aviation accident investigator with deep knowledge of NTSB investigations from 1996 to 2025.
+    from openai import OpenAI
 
-Answer the following question by writing a concise investigative narrative in the style of an NTSB report finding.
-Use precise technical language, third-person past tense, and include specific details such as flight hours, system states,
-crew actions, meteorological conditions, or causal factors as appropriate. Do not hedge or qualify — write as a definitive finding.
-Only draw on accidents and events from NTSB reports between 1996 and 2025.
-Keep the narrative to 3–4 sentences.
+    # Initialize NVIDIA client for LLM knowledge
+    ntsb_client = OpenAI(
+        base_url="https://integrate.api.nvidia.com/v1",
+        api_key=os.environ.get("NVIDIA_API_KEY")
+    )
 
-Additionally, if you can identify the specific NTSB accident report this question is about, provide its report number
-(e.g., "NTSB/AAR-18/01", "NTSB/AAR-14/01"). If you are not confident, leave the report number empty.
+    system_prompt = "detailed thinking off"
 
-Respond in JSON format with exactly these keys:
-- "narrative": your investigative narrative (string)
-- "ntsb_number": the NTSB report number if known, otherwise "" (string)
-- "confidence": how confident you are in the report number — "high", "medium", "low", or "none" (string)
+    user_prompt = f"""ROLE: You are an NTSB investigator.
 
-Question: {query}
-"""
+DATA ACCESS CONSTRAINTS (STRICT):
+
+You ONLY have access to official NTSB aviation accident reports (AAR/AIR format).
+
+You MUST ignore all accidents investigated by non-US authorities (e.g., NTSC Indonesia, Ethiopian AIB, BEA, AAIB, etc.).
+
+If an accident was NOT investigated by the NTSB, you MUST NOT include it.
+
+TASK:
+
+Find NTSB-investigated accidents between 1996–2025 that match the query:
+
+"{query}"
+
+OUTPUT REQUIREMENTS:
+
+Provide at most 3 matching accidents.
+
+For each accident, include ONLY:
+
+NTSB Report Number: (AAR-XX/XX or AIR-XX/XX)
+
+Aircraft: (Make/Model)
+
+Location: (City/Region, Country)
+
+Flight Crew: (Captain total hours: XXXX, First Officer total hours: XXXX if available)
+
+Summary: (ONE sentence describing the crash in formal NTSB tone)
+
+STRICT OUTPUT RULES:
+
+One accident per paragraph.
+
+NO explanations, NO extra text.
+
+If no valid NTSB cases exist, output EXACTLY: NONE
+
+ANTI-HALLUCINATION RULES:
+
+DO NOT guess or infer report numbers.
+
+DO NOT include accidents without confirmed NTSB report numbers.
+
+If unsure about any detail, EXCLUDE the case entirely.
+
+If the accident occurred outside NTSB jurisdiction and has no official NTSB report, EXCLUDE it."""
+
     try:
-        if llm_provider == "ollama":
-            from src.llm.ollama_client import call_ollama
-            response = call_ollama(prompt, model=ollama_model, json_mode=True)
-        elif llm_provider == "gpt":
-            from src.llm.client import call_llm, MODEL_GPT
-            response = call_llm(prompt, model=MODEL_GPT,
-                                response_format={"type": "json_object"})
-        else:
-            from src.llm.client import call_llm
-            response = call_llm(prompt,
-                                response_format={"type": "json_object"})
+        completion = ntsb_client.chat.completions.create(
+            model="nvidia/llama-3.1-nemotron-ultra-253b-v1",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0,
+            top_p=0.95,
+            max_tokens=4096,
+            frequency_penalty=0,
+            presence_penalty=0,
+            stream=True
+        )
 
-        # Parse JSON response
-        print(f"[KnowledgeDoc] Raw LLM response:\n{response[:500]}")
-        try:
-            data = json.loads(response)
-            narrative = data.get("narrative", "").strip()
-            raw_ntsb = data.get("ntsb_number", "").strip()
-            confidence = data.get("confidence", "none").strip().lower()
-            print(f"[KnowledgeDoc] Parsed JSON — ntsb_number='{raw_ntsb}', confidence='{confidence}'")
-        except (json.JSONDecodeError, AttributeError) as exc:
-            # Fallback: treat entire response as narrative
-            print(f"[KnowledgeDoc] JSON parse failed ({exc}), using fallback")
-            narrative = response.strip()
-            raw_ntsb = ""
-            confidence = "none"
+        # Collect streamed response
+        response_text = ""
+        for chunk in completion:
+            if chunk.choices[0].delta.content is not None:
+                response_text += chunk.choices[0].delta.content
+                print(chunk.choices[0].delta.content, end="", flush=True)
 
-        # Validate the report number against known reports
-        validated_ntsb = _validate_ntsb_number(raw_ntsb, narrative=narrative)
-        if raw_ntsb and not validated_ntsb:
-            print(f"[KnowledgeDoc] LLM returned '{raw_ntsb}' but it's not in the index — discarding")
-            confidence = "none"
+        print()  # Newline after streaming completes
+
+        # Parse response to extract report numbers and narrative
+        narrative = response_text.strip()
+        report_numbers = re.findall(r'(?:NTSB\s+)?(?:Report\s+)?(?:Number|No\.?)?\s*[:/]?\s*([A-Z]{3}-\d{2}/\d{2})', narrative, re.IGNORECASE)
+
+        # Validate and select the first matched NTSB number if found
+        validated_ntsb = ""
+        confidence = "none"
+        if report_numbers:
+            for rn in report_numbers:
+                validated = _validate_ntsb_number(rn, narrative=narrative)
+                if validated:
+                    validated_ntsb = validated
+                    confidence = "high" if "NONE" not in response_text else "medium"
+                    break
+
+        print(f"[KnowledgeDoc] Extracted — ntsb_number='{validated_ntsb}', confidence='{confidence}'")
 
         return KnowledgeResult(
             narrative=narrative,
             ntsb_number=validated_ntsb,
-            confidence=confidence if confidence in ("high", "medium", "low", "none") else "none",
+            confidence=confidence,
         )
     except Exception as e:
         print(f"[KnowledgeDoc] generation failed: {e}")

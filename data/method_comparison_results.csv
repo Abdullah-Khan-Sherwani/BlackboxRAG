@@ -1,0 +1,46 @@
+question_id,mode,avg_score,reports,augmentation,answer_preview
+Q2,baseline,0.07916,"['DCA24MA063', 'NTSB/AAR-01/02', 'NTSB/AAR-14/01']",,"**Evidence**
+- The report states that “Flight attendants **M4A** and **M4B** were found on the runway more than 1,000 ft from their jumpseats and sustained injuries… that indicated both were ejected during the airplane’s slide.” [NTSB: AAR-14/01]  
+- It further notes that “the four aft flight attend"
+Q2,llm_knowledge,0.1123,"['DCA24MA063', 'NTSB/AAR-01/02', 'NTSB/AAR-14/01']",report=NTSB/AAR-14/01 conf=high,"**Evidence**
+- The report states that “flight attendants **M4A** and **M4B** were found on the runway more than 1,000 ft from their jumpseats and sustained injuries… indicating both were ejected during the airplane’s slide.” [NTSB: AAR-14/01]
+- It further notes that “given their final locations, it "
+Q2,hyde,0.18575,"['NTSB/AAR-01/02', 'NTSB/AAR-06/04', 'NTSB/AAR-14/01', 'NTSB/AAR-92/06']",2 hypothetical docs,"**Evidence**
+- The report states that “flight attendants **M4A and M4B** were found on the runway … and sustained injuries … that indicated both were ejected during the airplane’s slide”【NTSB: AAR-14/01】.
+- It further notes that “the four aft flight attendants … were ejected … the four flight attend"
+Q2,multi_query,0.44689,"['NTSB/AAR-01/02', 'NTSB/AAR-14/01']",5 variants,"**Evidence**
+- The report states that “flight attendants **M4A** and **M4B** were found on the runway more than 1,000 ft from their jumpseats and were ejected during the airplane’s slide”【NTSB: AAR-14/01】.  
+- It further notes that “the four aft flight attendants … were ejected due to the destructio"
+Q10,baseline,0.064,"['NTSB/AAR-00/02', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02', 'NTSB/AAR-16/02']",,"- Evidence:
+  - The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within 3 minutes of the alarm.” [NTSB: AAR-00/02]
+
+- Answer:
+  - According to the ARFF fire crew chief, approximately **3 minutes** elapsed from the Condition One alarm until five ARFF vehicle"
+Q10,llm_knowledge,0.08795,"['NTSB/AAR-00/02', 'NTSB/AAR-05/02', 'NTSB/AAR-11/02']",report=NTSB/AAR-00/02 conf=medium,"- **Evidence**  
+  - The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within **3 minutes** of the alarm”【NTSB: AAR-00/02】.  
+
+- **Answer**  
+  According to the ARFF fire crew chief in NTSB Aircraft Accident Report AAR‑00/02, **3 minutes** elapsed from the i"
+Q10,hyde,0.19565,"['NTSB/AAR-00/02', 'NTSB/AAR-01/02', 'NTSB/AAR-04/01', 'NTSB/AAR-07/05', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02', 'NTSB/AAR-12/02']",2 hypothetical docs,"**Evidence**
+- The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression **within 3 minutes** of the alarm.” [NTSB: AAR-00/02]
+
+**Answer**
+- According to the ARFF fire crew chief in NTSB Report AAR‑00/02, roughly **3 minutes** elapsed from the Condition One alarm un"
+Q10,multi_query,0.37934,"['NTSB/AAR-00/02', 'NTSB/AAR-10/02', 'NTSB/AAR-11/02']",5 variants,"**Evidence**
+- The ARFF fire crew chief reported that “five ARFF vehicles were engaged in fire suppression within 3 minutes of the alarm.” [NTSB: AAR-00/02]
+
+**Answer**
+- According to the ARFF fire crew chief, approximately **3 minutes** elapsed from the issuance of the Condition One alarm until fiv"
+Q_AFG,baseline,0.0859,"['DCA23FA149', 'NTSB/AAR-00/01', 'NTSB/AAR-02/01', 'NTSB/AAR-03/02', 'NTSB/AAR-04/04', 'NTSB/AAR-06/03', 'NTSB/AAR-06/04', 'NTSB/AAR-07/04', 'NTSB/AAR-11/01', 'NTSB/AAR-16/02']",,"**Evidence:**
+- The provided excerpts detail crashes in Kentucky, Guam, Minnesota, New Jersey, New York, Florida, California, and Texas. None of the excerpts mention a crash that occurred in Afghanistan, nor provide any first‑officer flight‑hour data for such an event.  
+
+**Answer:**
+- Insufficient "
+Q_AFG,llm_knowledge,0.0859,"['DCA23FA149', 'NTSB/AAR-00/01', 'NTSB/AAR-02/01', 'NTSB/AAR-03/02', 'NTSB/AAR-04/04', 'NTSB/AAR-06/03', 'NTSB/AAR-06/04', 'NTSB/AAR-07/04', 'NTSB/AAR-11/01', 'NTSB/AAR-16/02']",report=none conf=none,"**Evidence:**
+- The provided excerpts detail first‑officer flight‑hour totals for accidents in Kentucky, Guam, Minnesota, New Jersey, New York, Florida, California, and Texas.  
+- None of the excerpts reference an accident that occurred in Afghanistan, nor provide first‑officer flight‑hour data for "
+Q_AFG,hyde,0.18921,"['NTSB/AAR-00/01', 'NTSB/AAR-03/02', 'NTSB/AAR-04/04', 'NTSB/AAR-06/03', 'NTSB/AAR-06/04', 'NTSB/AAR-07/04', 'NTSB/AAR-07/06', 'NTSB/AAR-11/01', 'NTSB/AAR-16/02', 'NTSB/AAR-92/06']",2 hypothetical docs,"**Evidence:**
+- The provided excerpts detail first‑officer flight‑hour totals for accidents in the United States (e.g., Air Tahoma AAR0603, East Coast Jets AAR1101, Chalk’s Ocean Airways AAR0704, etc.).  
+- None of the excerpts mention an accident that occurred in Afghanistan, nor provide flight‑hou"
+Q_AFG,multi_query,0.42117,"['NTSB/AAR-00/01', 'NTSB/AAR-03/02', 'NTSB/AAR-04/04', 'NTSB/AAR-06/03', 'NTSB/AAR-06/04', 'NTSB/AAR-07/04', 'NTSB/AAR-11/01', 'NTSB/AAR-15/01', 'NTSB/AAR-16/02', 'NTSB/AAR-92/06']",5 variants,"**Evidence:**
+- The only data provided for the first officer in the Afghanistan (Bagram) crash (Report AAR1501) are recent duty‑time figures: 14 hours in the preceding 24 hours and 71 hours in the preceding 30 days. No total career flight‑hour figure is given in the supplied excerpts. [NTSB: AAR1501"

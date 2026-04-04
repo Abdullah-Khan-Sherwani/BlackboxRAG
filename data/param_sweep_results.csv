@@ -1,0 +1,11 @@
+combo,top_k,avg_score,hit_rate,avg_rank
+baseline,10,0.07158,1.0,1.0
+multi_query,10,0.41646,1.0,1.0
+hyde,10,0.19631,1.0,1.0
+llm_knowledge,10,0.08959,1.0,1.0
+mq+hyde,10,0.51731,1.0,1.0
+mq+llm_k,10,0.4227,1.0,1.0
+mq+hyde+llm_k,10,0.51914,1.0,1.0
+mq+hyde+llm_k,5,0.62143,1.0,1.0
+mq+hyde+llm_k,15,0.45171,1.0,1.0
+mq+hyde+llm_k,20,0.40279,1.0,1.0
