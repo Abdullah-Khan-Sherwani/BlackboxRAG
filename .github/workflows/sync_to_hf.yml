@@ -15,5 +15,5 @@ jobs:
 
       - name: Push to HF Space
         run: |
-          git remote add hf https://AbdullahKhanSherwani:${{ secrets.HF_TOKEN }}@huggingface.co/spaces/AbdullahKhanSherwani/BlackBox
+          git remote add hf https://AbdullahKhanSherwani:${{ secrets.HUGGING_FACE_TOKEN }}@huggingface.co/spaces/AbdullahKhanSherwani/BlackBox
           git push hf main --force
